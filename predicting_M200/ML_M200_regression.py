@@ -147,7 +147,7 @@ def plot_regression(y_test, y_pred, ngal, bin_centers=None, stats=None, threshol
 
 def RFR_model(df=None, feature_list=None, use_pca=True, use_optimal_features=False,
               threshold=0.90,logM200_threshold=0, regression_plot=True, importances_plot=True,
-              test_size=0.3, n_trees=200, max_depth=10, threshold_width=0.5, bin_width=0.1):
+              test_size=0.3, n_trees=200, max_depth=10, threshold_width=0.5, bin_width=0.3):
     '''
     Train and evaluate a Random Forest Regressor to predict halo mass (log(M200)) for galaxy groups.
 
@@ -180,7 +180,7 @@ def RFR_model(df=None, feature_list=None, use_pca=True, use_optimal_features=Fal
     width_threshold : float, default=0.5
         95% confidence interval width threshold for y_true distribution for every y_pred bin, 
         at or above which the ML's predictive power is unreliable.
-    bin_width : float, default=0.1
+    bin_width : float, default=0.3
         predicted log(M200) bin size within which distribution of y_true is evaluated
 
     Returns:
