@@ -247,7 +247,6 @@ def average_model_score(X, y, model=None, scoring='f1_macro', regression=False,
     
     
     
-    
 #creating the feature CATALOGgGgGgGgGgGggggGGGGGggg
 
 def generate_SigmaM_variants(vr_limits, radius_limits):
