@@ -1,4 +1,5 @@
 ## Predicting_M200
+#### See the companion notebook [here](https://github.com/gammaspire/machine-learning/blob/main/predicting_M200/predict_M200.ipynb)!
 - As part of the WISESize Project, one aim I had was to characterize environments for our sample of about 30,000 galaxies. One way to do so is to find each galaxy's halo mass (M200) and associate that with environment. We loosely define environment according to 
     * Field: log(M200) < 12.5
     * Group: 12.5 < log(M200) < 14.0
