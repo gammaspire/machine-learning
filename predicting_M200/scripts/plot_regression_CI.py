@@ -199,13 +199,15 @@ def regression_CI_vary_state(df, param_dict):
     ypred_bin_centers_list = []   #need also for plotting purposes
     
     #include my six 'optimal' features here. 
-    optimal_features = ['log_Sigma_M1','log_Sigma_M2','log_Sigma_M7','log_Sigma_M8','log_Sigma_M17','ratio_SigmaM_1']
+    optimal_features = parse_force_features(param_dict)
     
     #include the random start seeds desired here!
     random_seeds = np.arange(20,50,2)
     
     #begin will the full list of features...
     X_features = df[optimal_features]
+    
+    print(f'Using the following list of features: {optimal_features}')
     
     for i, seed in enumerate(random_seeds):
         

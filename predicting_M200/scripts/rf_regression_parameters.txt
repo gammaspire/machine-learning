@@ -37,7 +37,8 @@ correlation_threshold             0.90                 #Correlation threshold (f
 use_pca                           0                 #Use PCA to reduce feature dimensionality. 0 for False, 1 for True
 
 
-use_optimal_features              0                 #Iterate over model to find optimal features set. 0 for False, 1 for True
+use_optimal_features              0                 #Iterate over model to find optimal features set that yields the highest R^2 score. 
+                                                    #0 for False, 1 for True
 
 
 threshold_width                   0.70              #68% confidence interval width threshold at or above which the ML's 

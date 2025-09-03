@@ -105,8 +105,7 @@ def confidence_intervals(y_test, y_pred, ngal=None, bin_width=0.3, method='fixed
         raise ValueError("The method arg must be 'fixed' or 'window'.")
     
 
-def plot_regression(y_test, y_pred, ngal, bin_centers=None, stats=None, threshold_width=0.5, 
-                    Ngal_threshold=0, min_bin_count=10, print_=False):
+def plot_regression(y_test, y_pred, ngal, bin_centers=None, stats=None, threshold_width=0.5, min_bin_count=10, print_=False):
     '''
     INPUT: 
     y_test : true log(M200)
@@ -114,6 +113,7 @@ def plot_regression(y_test, y_pred, ngal, bin_centers=None, stats=None, threshol
     bin_centers of distribution of y_test at binned y_pred 
     stats : stats of distribution of y_test at binned y_pred values to determine confidence interval
     threshold_width : at or above which the code will flag said bin(s) as where the model is an unreliable log(M200) predictor
+    min_bin_count : minimum number of galaxies that must exist in a bin for it to be plotted
     print_ : Whether user would like printed outputs of counts per bin, (bins, CI_widths), and the fraction of bins with CI_widths above the a range of threshold values. Not recommended for 'running' CIs.
     OUTPUT: figure of y_pred vs. y_true, with a 1-to-1 line plotted for ease of comparison
     Note: BE SURE NGAL IS ROW-MATCHED WITH Y_TEST AND Y_PRED!
@@ -193,7 +193,7 @@ def plot_regression(y_test, y_pred, ngal, bin_centers=None, stats=None, threshol
 
 
 def RFR_model(df=None, feature_list=None, use_pca=True, use_optimal_features=False,
-              threshold=0.90, Ngal_threshold=0, regression_plot=True, importances_plot=True,
+              pca_threshold=0.90, Ngal_threshold=0, regression_plot=True, importances_plot=True,
               test_size=0.3, n_trees=200, random_state=42, max_depth=10, threshold_width=0.5, 
               bin_width=0.1, method='fixed', min_bin_count=10):
     '''
@@ -209,9 +209,7 @@ def RFR_model(df=None, feature_list=None, use_pca=True, use_optimal_features=Fal
         Whether to reduce features using PCA with specified correlation threshold.
     use_optimal_features : bool, default=False
         If True, selects optimal feature subset via repeated cross-validation.
-    force_features_list : list, default=None
-        If not None, will use the desired features given in params.txt for model fitting.
-    threshold : float, default=0.90
+    pca_threshold : float, default=0.90
         Correlation threshold used for PCA feature reduction (if use_pca is True).
     Ngal_threshold : int
         Excludes galaxies in groups with Ngal below this value from R^2, MSE calculations; set to 0 for "no threshold"
@@ -340,15 +338,11 @@ def RFR_model(df=None, feature_list=None, use_pca=True, use_optimal_features=Fal
         print_=True
     
     if regression_plot:
-        #y_pred=y_pred[flag]
-        #ngal_test=ngal_test[flag]
-        #y_test=y_test[flag]
         
         bin_centers, stats = confidence_intervals(y_test, y_pred, ngal_test, bin_width=bin_width,
                                                   method=method)
         plot_regression(y_test, y_pred, ngal_test, bin_centers, stats, threshold_width=threshold_width,
-                       Ngal_threshold=Ngal_threshold, min_bin_count=float(param_dict['min_bin_count']),
-                        print_=print_)
+                       min_bin_count=float(param_dict['min_bin_count']),print_=print_)
     
     if importances_plot:
         plot_importances(X, model) 
@@ -378,7 +372,34 @@ def read_params(params_path):
             except:
                 continue
     return param_dict
+
+def parse_force_features(param_dict):
+    #pull feature names from param_dict. might be [] (empty list), and if so default to reading from .npy files.
+    feature_names = param_dict['force_features_list']
+        
+    if len(feature_names)<3:   #if empty bracket, pull full set of features names from .npy files
+        print('No force_features_list parameter found in rf_regression_parameters.txt or the list is empty!')
+        print('Searching for SigmaM and Sigmak .npy files...')
+        
+        try:
+            feature_names = read_features()
+            print('Success!')
+        except:
+            print('Bzzt. One or more feature files not found. Please generate the .npy files first before running.')
+            sys.exit()  
     
+    else:
+        #okay...parse string to isolate the features
+        #remove brackets, convert to list using ',' delimiter
+        feature_names=feature_names.replace('[','')
+        feature_names=feature_names.replace(']','')
+        feature_names=feature_names.replace(' ','')   #also remove any stray spaces
+        feature_names=feature_names.replace("'","")   #...and any single quotation marks
+        feature_names=feature_names.split(',')
+    
+    return feature_names
+
+
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Create ML model to predict log(M200) or environment class.")
@@ -402,31 +423,12 @@ if __name__ == "__main__":
         sys.exit()
     
     #pull feature names from param_dict. might be [] (empty list), and if so default to reading from .npy files.
-    feature_names = param_dict['force_features_list']
-        
-    if len(feature_names)<3:   #if empty bracket, pull full set of features names from .npy files
-        print('No force_features_list found in the parameters .txt file!')
-        print('Searching for SigmaM and Sigmak .npy files...')
-        
-        try:
-            feature_names = read_features()
-            print('Success!')
-        except:
-            print('Bzzt. One or more feature files not found. Please generate the .npy files first before running.')
-            sys.exit()  
-    
-    else:
-        #okay...parse string to isolate the features
-        #remove brackets, convert to list using ',' delimiter
-        feature_names=feature_names.replace('[','')
-        feature_names=feature_names.replace(']','')
-        feature_names=feature_names.replace(' ','')   #also remove any stray spaces
-        feature_names=feature_names.replace("'","")   #...and any single quotation marks
-        feature_names=feature_names.split(',')
+    feature_names = parse_force_features(param_dict)
+
     
     _ = RFR_model(df=df, feature_list=feature_names, use_pca=bool(int(param_dict['use_pca'])), 
               use_optimal_features=bool(int(param_dict['use_optimal_features'])), 
-              threshold=float(param_dict['correlation_threshold']), 
+              pca_threshold=float(param_dict['correlation_threshold']), 
               Ngal_threshold=int(param_dict['Ngal_threshold']), test_size=float(param_dict['test_size']), 
               n_trees=int(param_dict['n_trees']), max_depth=int(param_dict['max_depth']), 
               random_state=int(param_dict['random_state']),
