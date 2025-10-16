@@ -15,7 +15,7 @@ random_state                      42                    #The 'random state' inte
 test_size                         0.20                   #Defines the fraction of the sample the model will use as test data
 
 
-force_features_list               ['log_Sigma_M15','log_Sigma_M5','log_Sigma_M0','log_Sigma_M7','log_Sigma_M2']
+force_features_list               ['log_Sigma_M0','log_Sigma_M2','log_Sigma_M5','log_Sigma_M7','log_Sigma_M15']
                                                    
                                                    #force the model to use the features given in this list!
                                                    #this set of features will be used in place of the full feature set,
@@ -51,6 +51,6 @@ bin_width                         0.30              #predicted log(M200) bin siz
 min_bin_count                     10                #the minumum number of items per bin under which the bin will 
                                                     #be discarded  
   
-method                           window              #dictates whether confidence intervals are based on 'fixed' bin widths
+method                           window             #dictates whether confidence intervals are based on 'fixed' bin widths
                                                     #fixed --> for equal-width bins (pd.cut), 
                                                     #window --> for bins centered on each galaxy (sliding window)

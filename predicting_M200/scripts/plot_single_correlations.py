@@ -11,9 +11,6 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-import os
-homedir=os.getenv("HOME")
-
 
 #read in dataframe
 def read_df(param_dict):
@@ -198,9 +195,12 @@ def plot_CI_widths(df, feature_names, y_test, y_pred):
     plt.figure(figsize=(6, 5))
 
     #SINGLE-PARAMETER FUNCTION FITS
-    names=[r'log$\Sigma_{M0}$', r'log$\Sigma_{M2}$', r'log$\Sigma_{M5}$', r'log$\Sigma_{M7}$', r'log$\Sigma_{M15}$', r'$\Sigma_2$', r'$\Sigma_5$', r'$\Sigma_{10}$', r'M$_*$', r'Ngal$_0$', r'Ngal$_2$', r'Ngal$_5$', r'Ngal$_7$']
+    names=[r'log$\Sigma_{M0}$', r'log$\Sigma_{M2}$', r'log$\Sigma_{M5}$', r'log$\Sigma_{M7}$', r'log$\Sigma_{M15}$', r'$\Sigma_5$', r'$\Sigma_{10}$', r'M$_*$', r'Ngal$_0$', r'Ngal$_2$', r'Ngal$_5$']
     
-    for i, feature in enumerate(['log_Sigma_M0','log_Sigma_M2','log_Sigma_M5','log_Sigma_M7','log_Sigma_M15','Sigma_2','Sigma_5','Sigma_10','Mstar','Sigma_ngal_0','Sigma_ngal_2','Sigma_ngal_5','Sigma_ngal_7']):
+    colors = ["#ff0000","#ff6600","#c0ff00","#39ff00","#00ff73","#00ffdc", "#0099ff", 
+              "#0022ff", "#4d00ff", "#b200ff", "#ff00a2"]
+
+    for i, feature in enumerate(['log_Sigma_M0','log_Sigma_M2','log_Sigma_M5','log_Sigma_M7','log_Sigma_M15','Sigma_5','Sigma_10','Mstar','Sigma_ngal_0','Sigma_ngal_2','Sigma_ngal_5']):
         
         y_true_feature, y_pred_feature = get_feature_fit_predictions(df_clean, feature)
         
@@ -210,19 +210,29 @@ def plot_CI_widths(df, feature_names, y_test, y_pred):
         
         CI_width = stats['high'] - stats['low']
         
-        plt.plot(bin_centers[mask], CI_width[mask], alpha=0.5, ls='--', label=names[i])
+        plt.plot(bin_centers[mask], CI_width[mask], alpha=0.5, ls='--', label=names[i], 
+        color=colors[i])
+        #color=f"#{random.randint(0,255):02x}{random.randint(0,255):02x}{random.randint(0,255):02x}")
         
     #RFR MODEL
     bin_centers_model, stats_model, mask_model = get_RFR_stats(y_test, y_pred, bin_width=0.5)
     
     CI_width_model = stats_model['high'] - stats_model['low']
     
-    plt.xlabel('Predicted log(M200)',fontsize=14)
-    plt.ylabel('68% Confidence Interval Width',fontsize=14)
+    plt.xlabel('Predicted log(M200) [dex]',fontsize=14)
+    plt.ylabel('68% Confidence Interval Width [dex]',fontsize=14)
     
-    plt.plot(bin_centers_model[mask_model], CI_width_model[mask_model], label='RFR Model', color='purple', lw=2)
+    plt.plot(bin_centers_model[mask_model], CI_width_model[mask_model], label='ML Model', color='black', lw=2)
     
-    plt.legend(fontsize=8)
+    #plt.xlim(9.6,15)
+    plt.grid(alpha=0.2)
+    
+    legend_ = plt.legend(fontsize=9.5, ncol=2, handlelength=0.9, frameon=False,
+              loc='lower left')
+
+    # change the line width for the legend
+    for line in legend_.get_lines():
+        line.set_linewidth(3.0)
     
     plt.show()
                 
