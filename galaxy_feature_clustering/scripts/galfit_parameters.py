@@ -42,7 +42,7 @@ PCA_FOR_PLOTTING=True
 
 #plot the feature vector components of each PCA!
 #will be ignored if PCA_FOR_PLOTTING=False
-PLOT_PCA_COMPONENTS=True
+PLOT_PCA_COMPONENTS=False
 
 #If PCA_FOR_PLOTTING is False, choose X and Y columns below for plotting feature clusters in 2D space
 X='CRE_W1'
@@ -54,7 +54,7 @@ PLOT_CLUSTERS=True
 
 #set to True for the script to generate a corner plot of all feature clusters in a 
 #physically meaningful space (i.e., feature vs. feature)
-PLOT_CORNER=True
+PLOT_CORNER=False
 
 ###############################
 ###############################

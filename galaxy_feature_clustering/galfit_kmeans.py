@@ -28,7 +28,7 @@ PROCEDURE:
 
 import sys
 sys.path.insert(0,'scripts')
-from dataprocessing_utils import px_to_arcsec, arcsec_to_kpc, nmaggies_to_mag
+from conversion_utils import px_to_arcsec, arcsec_to_kpc, nmaggies_to_mag
 
 from galfit_parameters import Params
 params = Params()
