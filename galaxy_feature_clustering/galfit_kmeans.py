@@ -28,12 +28,14 @@ PROCEDURE:
 
 import sys
 sys.path.insert(0,'scripts')
-from dataprocessing_utils import px_to_arcsec, arcsec_to_kpc
+from dataprocessing_utils import px_to_arcsec, arcsec_to_kpc, nmaggies_to_mag
 
 from galfit_parameters import Params
 params = Params()
 
 import numpy as np
+np.seterr(all='ignore')  #ignore those pesky log10() errors
+
 from scipy.stats import zscore
 from astropy.table import Table
 import pandas as pd
@@ -45,7 +47,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 
-def get_feature_names():
+def get_feature_names(colors=False, flux=False):
     #define Re, Sersic index feature columns
     re_cols = [f'CRE_{band}' for band in params.BANDS]
     nser_cols = [f'CN_{band}' for band in params.BANDS]
@@ -53,6 +55,24 @@ def get_feature_names():
     #combine
     features = re_cols + nser_cols
     
+    #use averages of g&r, W1&W2 effective radii
+    if 'CRE_r' and 'CRE_g' in features:
+        print('Using average g and r effective radius!')
+        features = [f for f in features if f not in ['CRE_r', 'CRE_g']] + ['AVG_RE_gr']
+    
+    if 'CRE_W1-fixBA' and 'CRE_W2' in features:
+        print('Using average W1 and W2 effective radius!')
+        features = [f for f in features if f not in ['CRE_W1-fixBA', 'CRE_W2']] + ['AVG_RE_W1W2']
+    
+    if colors:
+        features += ['NUV_r','W1_W4']
+    
+    if flux:
+        for band in params.BANDS:
+            band = band.split('-')[0].upper()
+            features += [f'FLUX_SB22_{band}']
+            features += [f'FLUX_SB25_{band}']
+
     #and return
     return features
 
@@ -61,13 +81,61 @@ def get_vcosmic_column():
     env = Table.read('data/vf_v2_environment.fits')
     return env['Vcosmic']
 
+
+def get_stellar_columns():
+    cigale = Table.read('data/cigale_vf_metallicity.fits')
+    
+    mstar = np.log10(cigale['bayes.stellar.m_star'])
+    sfr = np.log10(cigale['bayes.sfh.sfr'])
+    
+    return mstar, sfr
+
+
 def get_photometric_colors():
-    phot = Table.read('data/vf_v2_legact_ephot.fits', include_names=['','','','']
+    #needed photometric fluxes (in nanomaggies)
+    phot = Table.read('data/vf_v2_legacy_ephot.fits')['FLUX_AP06_NUV','FLUX_AP06_R',
+                                                       'FLUX_AP06_W1','FLUX_AP06_W4']
+    #extinction corrections
+    ext = Table.read('data/vf_v2_extinction.fits')['A(NUV)_SandF', 'A(R)_SandF',
+                                                   'A(W1)_SandF', 'A(W4)_SandF']
+    band = ['NUV', 'R', 'W1', 'W4']
+    #convert phot fluxes to extinction-corrected AB magnitudes
+    for i in range(4):   #0, 1, 2, 3...NUV, R, W1, W4
+        mAB_corr = nmaggies_to_mag(phot[f'FLUX_AP06_{band[i]}'], ext[f'A({band[i]})_SandF'])        
+        phot[f'mAB_{band[i]}'] = mAB_corr
+    
+    NUV_r = phot[f'mAB_NUV'] - phot['mAB_R']
+    W1_W4 = phot[f'mAB_W1'] - phot['mAB_W4']
+    
+    return NUV_r, W1_W4
 
 
-def make_galfit_table():
+def get_SB_flux():
+    '''
+    AIM: pull flux measurements at the needed wavelengths for SB22, SB25
+    '''
+    phot = Table.read('data/vf_v2_legacy_ephot.fits')
+    
+    phot_sb = Table()
+    
+    for band in params.BANDS:
+        band = band.split('-')[0].upper()  #split band into components delimited by '-' (e.g., 'W3-fixBA')
+                                           #then take the zeroth component
+                                           #THEN capitalize all alphabet characters
+
+        phot_sb[f'FLUX_SB22_{band}'] = np.log10(phot[f'FLUX_SB22_{band}'])
+        phot_sb[f'FLUX_SB25_{band}'] = np.log10(phot[f'FLUX_SB25_{band}'])
+    
+    phot_sb = phot.to_pandas()
+    
+    return phot_sb
+
+
+def make_galfit_table(colors=False,flux=False):
     '''
     Read GALFIT grz, W1-4 output tables
+        * If colors=True, will include NUV-r, W1-W4 colors
+        * If 
     Convert from astropy Table to pandas df
     Output --> dataframe with grz, W1-4 Re, nser, CXC, CNumerical_Error columns
     '''
@@ -78,11 +146,52 @@ def make_galfit_table():
         t = Table.read(f'data/vf_v2_galfit_{band}.fits')
         for colname in params.COLUMNS:
             data_table[f'{colname}_{band}'] = t[colname]
-    
+        
     #append the Vcosmic column
     data_table['Vcosmic'] = get_vcosmic_column()
     
-    return data_table.to_pandas()
+    #append mstar, sfr columns
+    data_table['logmstar'], data_table['logsfr'] = get_stellar_columns()
+    
+    #add a size ratio column...just because. (I actually need it for analysis.)
+    data_table['Size Ratio'] = data_table['CRE_W3-fixBA'] / data_table['CRE_W1-fixBA']
+    
+    if colors:
+        NUV_r, W1_W4 = get_photometric_colors()
+        data_table.add_columns([NUV_r,W1_W4], names=['NUV_r','W1_W4'])
+    
+    data_table = data_table.to_pandas()
+
+    if flux:
+        phot_tab = get_SB_flux()
+        data_table = pd.concat([data_table.copy(), phot_tab.copy()],axis=1)
+
+    return data_table
+
+
+def add_average_re(data_table):
+    '''
+    AIM: append average g & r, W1 & W2 effective radii if the columns exist.
+    '''
+    if 'CRE_r' and 'CRE_g' in data_table.columns:
+        data_table['AVG_RE_gr'] = (data_table['CRE_g'] + data_table['CRE_r'])/2
+    if 'CRE_W1-fixBA' and 'CRE_W2' in data_table.columns:
+        data_table['AVG_RE_W1W2'] = (data_table['CRE_W1-fixBA'] + data_table['CRE_W2'])/2
+    
+    return data_table
+
+
+def get_kpc_columns(data_table):
+    '''
+    AIM: convert pixels to arcseconds, then arcseconds to kpc for every effective radius column.
+    '''
+    for band in params.BANDS:
+        re_col = f'CRE_{band}'
+        re_arcsec = px_to_arcsec(band, data_table[re_col], params=params)
+        re_kpc = arcsec_to_kpc(re_arcsec, data_table['Vcosmic'])                
+        data_table[re_col] = re_kpc
+    
+    return data_table
 
 
 def trim_galfit_table(full_df):
@@ -101,15 +210,21 @@ def trim_galfit_table(full_df):
     
     #drop row if any central x pixel coordinate cell is zero
     full_df = full_df.loc[~(full_df[xyc_cols]==0).any(axis=1)]
-    
+        
     #drop rows with any nser > 6.
     full_df = full_df.loc[~(full_df[nser_cols]>6).any(axis=1)]
-    
+        
     #drop rows with any convolved numerical error
     full_df = full_df.loc[~(full_df[numerr_cols]).any(axis=1)]
-    
-    #print number of removed galaxies
-    message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT quality flags.'
+        
+    #if magnitude colors are in the list of features, then we have to apply
+    #a quality flag here too. This amount to just dropping the NaNs
+    if 'NUV_r' in full_df.columns:
+        full_df = full_df.copy().dropna()
+        message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT and PHOT quality flags.'
+    else:
+        message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT quality flags.'
+        
     print('#'*len(message))
     print(message)
     print('#'*len(message))
@@ -146,17 +261,23 @@ def iqr_clipping(df, features, k_clip=1.5):
 def standardize_data(df, features):
     '''
     Standardize data features such that each column has a mean of 0 and a standard deviation of 1.
-    Uses get_feature_names() by default -- has CN and CRE for grz, W1-4
-    output: edited pandas dataframe with input columns standardized
+    output: edited pandas dataframe with input columns standardized, scaler object
     '''
+    df = df.copy()
     
-    #initiate the scaler    
+    #create 'new' dataframe; add '_unscaled' to the feature column names
+    unscaled = df[features].add_suffix("_unscaled")
+
+    #initiate the scaler
     scaler = StandardScaler()
     
     #apply the scaler to transform the features
     df[features] = scaler.fit_transform(df[features])
+
+    #concatenate the transformed features with the unscaled features!
+    df = pd.concat([df, unscaled], axis=1)
     
-    #ANNNND return (the full df)
+    #ANNNNNND return
     return df
 
 
@@ -176,7 +297,7 @@ def pca_2d(feature_data, features, plot=False):
     #PLOT THE COMPONENTS
     if plot:
         from plotting_utils import plot_pca_components
-        plot_pca_components(feature_data, features, pca)
+        plot_pca_components(feature_data, features, pca, cmap_name='tab20')
     
     return feature_data
 
@@ -194,23 +315,20 @@ def run1_kmeans(feature_data, features, k=3, print_=False):
     #this silly bracket addition is needed when making a new df col and not editing an existing one..?
     feature_data.loc[:, 'Feature Cluster'] = kmeans.fit_predict(feature_data[features])
     
+    #print a summary of the feature medians in every cluster!
     if print_:
-        #print a summary of the feature medians in every cluster!
+        #get list of unscaled feature columns
+        features_unscaled = [feature+'_unscaled' for feature in features]
         
-        '''
-        features=get_feature_names()
-        df=make_galfit_table()
-        trim=trim_galfit_table(df.copy())
-        sig=iqr_clipping(trim,features)
+        #add Feature Cluster and Size Ratio integer columns to the mix
+        #we need Size Ratio!
+        all_columns = features_unscaled+['Feature Cluster']+['Size Ratio']
         
-        sig['Feature Cluster'] = feature_data['Feature Cluster']
-        cluster_summary = sig[features+['Feature Cluster']].groupby('Feature Cluster').median().round(3)
-        print("\nFEATURE CLUSTER (STANDARDIZED) MEDIAN PROPERTIES:")
-        print(cluster_summary)
-        '''
+        #generate a summary of the *medians*
+        cluster_summary = feature_data[all_columns].groupby('Feature Cluster').median().round(3)
         
-        cluster_summary = feature_data[features+['Feature Cluster']].groupby('Feature Cluster').median().round(3)
-        print("\nFEATURE CLUSTER (STANDARDIZED) MEDIAN PROPERTIES:")
+        #annnd print.
+        print("\nFEATURE CLUSTER MEDIAN PROPERTIES:")
         print(cluster_summary)
     
     return feature_data
@@ -224,7 +342,7 @@ def find_optimal_k(feature_data, features, min_k=2, max_k=10, plot=True):
     K = np.arange(min_k, max_k+1)
     
     for k in K:
-        faux_df = run1_kmeans(feature_data[features].copy(), k)
+        faux_df = run1_kmeans(feature_data, features, k)
         silhouettes.append(silhouette_score(faux_df[features], faux_df['Feature Cluster']))
     
     if plot:
@@ -238,26 +356,35 @@ def find_optimal_k(feature_data, features, min_k=2, max_k=10, plot=True):
 ####################################
 # RUN IT ALL RUN IT ALL RUN IT ALL #
 ####################################
-def galfit_kmeans():
+def galfit_kmeans(colors=False, flux=False):
+    '''
+    *If colors=True, the kmeans features will include the following magnitude colors:
+        *NUV - r
+        *W1 - W4
+    *If flux=True, kmeans features will include the following surface brightness flux measurements:
+        *FLUX_SB22_{band}
+        *FLUX_SB25_{band}
+    *Note that these magnitudes originate from extinction-corrected photometric fluxes
+        courtesy of SGA2020
+    '''
 
     print('NOTE: be sure to edit galfit_parameters.py so parameters are to your liking!')
     
     #pull the full list of features which will be clustered
-    features = get_feature_names()
+    features = get_feature_names(colors=colors,flux=flux)
+    
+    print(f'USING THESE FEATURES: {features}')
     
     #generate the dataframe
-    df_full = make_galfit_table()
-    
+    df_full = make_galfit_table(colors=colors,flux=flux)       
+        
     #trim the table. remove the errors and unphysical data
     df_trimmed = trim_galfit_table(df_full)
     
-    #convert pixels to arcseconds, then arcseconds to kpc
-    for band in params.BANDS:
-        re_col = f'CRE_{band}'
-        re_arcsec = px_to_arcsec(band, df_trimmed[re_col], params=params)
-        re_kpc = arcsec_to_kpc(re_arcsec, df_trimmed['Vcosmic'])        
-        
-        df_trimmed[re_col] = px_to_arcsec(band, df_trimmed[re_col], params=params) 
+    df_trimmed = get_kpc_columns(df_trimmed)
+    
+    #calculate average g & r, W1 & W2 effective radii columns to df_trimmed (if those columns exist)
+    df_trimmed = add_average_re(df_trimmed)   
     
     #remove pesky outliers that lie beyond 3-sigma of their respective features' means
     df_clipped = iqr_clipping(df_trimmed, features, k_clip=params.IQRCLIP)
@@ -278,7 +405,7 @@ def galfit_kmeans():
     #must precede PCA if any, so that these features are not included in the analysis
     if params.PLOT_CORNER:
         from plotting_utils import plot_corner
-        plot_corner(feature_data, features)
+        plot_corner(feature_data, features=None)
     
     #if the user should like a 2D plot of the clusters...
     if params.PLOT_CLUSTERS:

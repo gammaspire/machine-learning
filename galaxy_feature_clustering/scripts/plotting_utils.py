@@ -7,6 +7,8 @@ def cluster_color_palette(feature_data):
     
     if len(feature_data['Feature Cluster'].unique()) == 3:
         cluster_colors = ['darkorange','seagreen','deeppink']
+    elif len(feature_data['Feature Cluster'].unique()) == 4:
+        cluster_colors = ['darkorange','seagreen','deeppink','indigo']
     else:
         cluster_colors = sns.color_palette('colorblind', len(feature_data['Feature Cluster'].unique()))
     
@@ -42,49 +44,79 @@ def plot_kmeans_clusters(feature_data, x=None, y=None, PCA=False):
     plt.show()
     
 
-def plot_pca_components(feature_data, features, pca):
-    """
-    Visualize the PCA loadings (feature contributions) for the first two components.
-    Includes arrow scaling, clearer labels, and optional auto-label adjustment.
-    """
-    from adjustText import adjust_text
-    n_features = len(features)
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.cm import get_cmap
+
+def plot_pca_components(feature_data, features, pca, cmap_name='tab20'):
+    '''
+    * Visualize PCA feature loadings for the first two components.
+    * Features are sorted by total loading strength (or rather, the magnitude of their contribution.
+    '''
     
-    #vector components of each feature in PCA space
+    n_features = len(features)
     components = pca.components_
     
-    text_labels = []
-    cmap = plt.cm.viridis(np.linspace(0, 1, n_features))
+    #calculate total contribution magnitude for each feature (will need later!)
+    loading_strength = np.sqrt(components[0]**2 + components[1]**2)
+    
+    #sort features by loading strength (descending)
+    sorted_indices = np.argsort(loading_strength)[::-1]
+    features_sorted = [features[i] for i in sorted_indices]
+    
+    cmap = get_cmap(cmap_name)
+    hatch_options = ['**', '||', '..', 'OO', 'xx', 'oo', 'OO', '..', '**']
+    
+    #cmap.N gives the number of colors available in the cmap
+    #i % cmap.N --> for each i, calculates remainder of i/cmap.N.
+        #if cmap.N=10, then i%cmap.N = 0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,...
+        #this means the cmap color will go cyclically
+    colors = [cmap(i % cmap.N) for i in range(n_features)]  
+    
+    #do the same for hatch!
+    hatch_ = [hatch_options[i % len(hatch_options)] for i in range(n_features)]
     
     plt.figure(figsize=(8, 6))
-    
-    for i, feature in enumerate(features):
+
+    for rank, i in enumerate(sorted_indices):
         x, y = components[0, i], components[1, i]
-        plt.arrow(0, 0, x, y, head_width=0.025, head_length=0.04, fc=cmap[i], ec=cmap[i], linewidth=1.8)
-        text = plt.text(x*1.2, y*1.2, feature, color=cmap[i], ha='center', va='center')
-        text_labels.append(text)
-    
-    #automatically adjust overlapping text labels
-    adjust_text(text_labels,  arrowprops=dict(arrowstyle='-', color=None, lw=0.5, alpha=0.6))
-    
+        plt.arrow(0, 0, x, y,
+                head_width=0.06, head_length=0.07, linewidth=1.8, alpha=0.6,
+                fc=colors[rank], ec='black', hatch=hatch_[rank],
+                label=f"{features[i]} ({loading_strength[i]:.2f})")
+
     plt.xlabel("Principal Component 1")
     plt.ylabel("Principal Component 2")
     plt.title("PCA Loadings Plot")
-    plt.grid(alpha=0.5)
+    plt.grid(alpha=0.2)
     plt.gca().set_aspect('equal', adjustable='datalim')
     plt.axhline(0, color='gray', linewidth=0.8)
     plt.axvline(0, color='gray', linewidth=0.8)
+
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., fontsize=9)
+
+    plt.tight_layout()
     plt.show()
 
 
-def plot_corner(feature_data, features):
+def plot_corner(feature_data, features=None):
     #suppress those WARNINGS PLS
     import warnings
     warnings.filterwarnings('ignore', category=FutureWarning)
     
     cluster_colors = cluster_color_palette(feature_data)
     
-    features=['CRE_W1-fixBA', 'CN_W1-fixBA', 'CRE_W3-fixBA', 'CN_W3-fixBA']
+    #we want to plot the UNSCALED features!
+    #I am also dictating the plotted features. not oops.
+    if features is None:
+        features=['CRE_W1-fixBA_unscaled', 'CN_W1-fixBA_unscaled', 
+                  'CRE_W3-fixBA_unscaled', 'CN_W3-fixBA_unscaled',
+                  'CRE_r_unscaled', 'CN_r_unscaled']
+        if 'AVG_RE_gr_unscaled' in feature_data.columns:
+            features[4] = 'AVG_RE_gr_unscaled'
+        if 'AVG_RE_W1W2_unscaled' in feature_data.columns:
+            features[0] = 'AVG_RE_W1W2_unscaled'
+        
     
     g = sns.pairplot(feature_data, vars=features, hue='Feature Cluster', 
                      palette=cluster_colors, corner=True,
@@ -99,10 +131,10 @@ def plot_corner(feature_data, features):
     #ax_dict={0:'0', 2:'1', 5:'2', 9:'3', 14:'4', 20:'5', 27:'6'}
     
     #for axes NOT on the diagonal...use log-log space
-    for i, ax in enumerate(axes_flat):
+    #for i, ax in enumerate(axes_flat):
     #    if i not in ax_dict:
-        ax.set_xscale('log')
-        ax.set_yscale('log')
+    #    ax.set_xscale('log')
+    #    ax.set_yscale('log')
     
     g._legend.remove()
     g.fig.suptitle('Feature Clusters in Physical Space', y=1.02)

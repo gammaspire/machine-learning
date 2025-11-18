@@ -83,3 +83,29 @@ def arcsec_to_kpc(arcsec_array, vcosmic_data):
     radians_array = arcsec_to_radians(arcsec_array)
     re_data_kpc = radians_to_kpc(radians_array, vcosmic_data)
     return re_data_kpc
+
+#############################################################
+# CONVERTING NANOMAGGIES TO EXTINCTION-CORRECTED MAGNITUDES #
+#############################################################
+
+def nmaggies_to_mag(phot_array, extinction_array):
+    '''
+    AIM: convert column of fluxes (nanomaggies) to extinction-corrected AB magnitudes
+    INPUT: 
+        *row-matched photometry array (in nanomaggies) for a single wavelength band
+        *row-matched extinction array (in magnitudes) for a single wavelength band
+    OUTPUT:
+        *row-matched, extinction corrected AB magnitude array
+    '''
+        
+    #first convert nanomaggies to janskys
+    phot_jy = phot_array * 3.631e-6   #conversion factor
+
+    #convert to AB magnitudes
+    mAB = (-2.5) * np.log10(phot_jy / 3631.)
+    
+    #now...apply extinction correction
+    mAB_corr = mAB - extinction_array
+    
+    return mAB_corr
+        
