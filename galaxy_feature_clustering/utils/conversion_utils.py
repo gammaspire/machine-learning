@@ -1,15 +1,16 @@
 import numpy as np
+from galfit_parameters import Params
+params = Params()
 
 ###############################
 # CONVERTING ARCSEC TO PIXELS #
 ###############################
 
-def px_to_arcsec(band, data, params=None):
+def px_to_arcsec(band, data):
     '''
     AIM: convert GALFIT effective radii from pixels to arcseconds
     * band must be a wavelength band (str) that is featured in PSCALE (grz, W1-4)
     * if data is float or list type, the output will be a numpy array
-    * params
     '''
     import sys
     
@@ -108,4 +109,44 @@ def nmaggies_to_mag(phot_array, extinction_array):
     mAB_corr = mAB - extinction_array
     
     return mAB_corr
+
+
+#####################################################
+# CONVERTING PIXELS TO KPC FOR EFFECTIVE RADII DATA #
+#####################################################
+def get_kpc_columns(data_table):
+    '''
+    AIM: convert pixels to arcseconds, then arcseconds to kpc for every effective radius column.
+    '''
+    for band in params.BANDS:
+        re_col = f'CRE_{band}'
+        re_arcsec = px_to_arcsec(band, data_table[re_col])
         
+        if 'Vcosmic' not in data_table.columns:
+            print('Need Vcosmic column in order to proceed! Expect errors imminently...')
+            return
+        
+        re_kpc = arcsec_to_kpc(re_arcsec, data_table['Vcosmic'])                
+        data_table[re_col] = re_kpc
+    
+    return data_table
+
+
+#####################################################
+# CONVERTING FLUXES TO PHOTOMETRIC MAGNITUDE COLORS #
+#####################################################
+
+def get_photometric_colors(phot, ext): 
+    from conversion_utils import nmaggies_to_mag
+    
+    band = ['NUV', 'R', 'W1', 'W4'] 
+    
+    #convert phot fluxes to extinction-corrected AB magnitudes 
+    for i in range(4): #0, 1, 2, 3...NUV, R, W1, W4
+        mAB_corr = nmaggies_to_mag(phot[f'FLUX_AP06_{band[i]}'], ext[f'A({band[i]})_SandF']) 
+        phot[f'mAB_{band[i]}'] = mAB_corr 
+        
+    NUV_r = phot[f'mAB_NUV'] - phot['mAB_R'] 
+    W1_W4 = phot[f'mAB_W1'] - phot['mAB_W4'] 
+
+    return NUV_r, W1_W4
