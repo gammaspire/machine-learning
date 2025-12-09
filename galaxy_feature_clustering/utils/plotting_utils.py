@@ -1,16 +1,18 @@
 from matplotlib import pyplot as plt
+import matplotlib.ticker as mticker
 import seaborn as sns
 import numpy as np
 
 
 def marker_palette(feature_data):
     
-    shapes = ['o', 's', '^', '*', 'D', 'v' 'X', '<', 'h', '>']
+    shapes = ['o', 's', '^', '*', 'D', 'v', 'X', '<', 'h', '>']
     
     try:
         k = len(feature_data['Feature Cluster'].unique())  #number of feature groups
     except:
         k = len(feature_data)  #also number of feature groups --> for one row per k cluster
+                               #only needed if plotting medians
     
     if k == 3:
         cluster_colors = ['darkorange','seagreen','deeppink']
@@ -18,13 +20,18 @@ def marker_palette(feature_data):
         
     elif k == 4:
         cluster_colors = ['darkorange','seagreen','deeppink','indigo']
-        edge_colors = ['redorange', 'green', 'crimson', 'black']
+        edge_colors = ['orangered', 'green', 'crimson', 'black']
     
     else:
         cluster_colors = sns.color_palette('colorblind', len(feature_data['Feature Cluster'].unique()))
         edge_colors = cluster_colors
-        
+    
     marker_shapes = [shapes[i % len(shapes)] for i in range(k)]
+    
+    if -1 in feature_data['Feature Cluster'].unique():
+        cluster_colors.insert(0, 'lightgray')
+        edge_colors.insert(0, 'darkgray')
+        marker_shapes.insert(0, 'o')
     
     return cluster_colors, edge_colors, marker_shapes
 
@@ -41,7 +48,13 @@ def plot_silhouette(K, silhouettes):
     
 def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     
-    cluster_colors, _, marker_shapes = marker_palette(feature_data)
+    #pull the colors...
+    cluster_colors, _, _ = marker_palette(feature_data)
+    
+    #sort the unique feature groups numerically
+    unique_clusters = sorted(feature_data['Feature Cluster'].unique())
+    #create a dictionary mapping each color to a feature group --> {k: color}
+    color_map = {c: cluster_colors[i] for i, c in enumerate(unique_clusters)}
     
     #PCA and UMAP flag
     flag = (PCA | UMAP)
@@ -53,10 +66,16 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     x = 'Comp1' if flag else x
     y = 'Comp2' if flag else y
     
-    plt.figure(figsize=(8,6))
-    sns.scatterplot(data=feature_data, x=x, y=y, hue='Feature Cluster',
-                    palette=cluster_colors, alpha=0.7, edgecolor='w', linewidth=0.4,
-                    markers=marker_shapes)
+    if -1 not in feature_data['Feature Cluster'].unique():
+        plt.figure(figsize=(8,6))
+        sns.scatterplot(data=feature_data, x=x, y=y, hue='Feature Cluster',
+                        palette=color_map, alpha=0.7, edgecolor='w', linewidth=0.4)
+    else:
+        ax = sns.scatterplot(x=x, y=y, data=feature_data[feature_data['Feature Cluster'] == -1], alpha=0.2,
+                            color='lightgray', edgecolor='w', linewidth=0.4)
+        sns.scatterplot(x=x, y=y, data=feature_data[feature_data['Feature Cluster'] != -1], hue='Feature Cluster',
+                        palette=color_map, alpha=0.7, edgecolor='w', linewidth=0.4, ax=ax)
+    
     plt.xlabel('Component One')
     plt.ylabel('Component Two')
     
@@ -122,7 +141,7 @@ def plot_corner(feature_data, features=None):
     import warnings
     warnings.filterwarnings('ignore', category=FutureWarning)
     
-    cluster_colors, _, marker_shapes = marker_palette(feature_data)
+    cluster_colors, _, _ = marker_palette(feature_data)
     
     #we want to plot the UNSCALED features!
     #I am also dictating the plotted features. not oops.
@@ -134,21 +153,24 @@ def plot_corner(feature_data, features=None):
             features[4] = 'AVG_RE_gr_unscaled'
         if 'AVG_RE_W1W2_unscaled' in feature_data.columns:
             features[0] = 'AVG_RE_W1W2_unscaled'
-        
     
+    
+    unique_clusters = sorted(feature_data['Feature Cluster'].unique())
+    color_map = {c: cluster_colors[i] for i, c in enumerate(unique_clusters)}
+
     g = sns.pairplot(feature_data, vars=features, hue='Feature Cluster', 
-                     palette=cluster_colors, corner=True, markers=marker_shapes,
+                     palette=color_map, corner=True,
                      plot_kws={'alpha': 0.6, 's': 20}, diag_kind=None)  #'kde')
 
     #pull the axes from the corner plot
     axes_flat = [ax for ax in g.axes.flat if ax is not None]
     
     g._legend.remove()
-    g.fig.suptitle('Feature Clusters in Physical Space', y=1.02)
+    #g.fig.suptitle('Feature Clusters in Physical Space', y=1.02)
     plt.show()
     
     
-def plot_env_fraction(feature_data, main_only=False):
+def plot_env_fraction(feature_data, main_only=True):
     '''
     main_only --> plot cluster, rich group, poor group, filament, field environments only (no nuance)
     '''
@@ -156,7 +178,7 @@ def plot_env_fraction(feature_data, main_only=False):
     
     #define feature group colors
     colors, edgecolors, marker_shapes = marker_palette(feature_data)
-    
+
     #unpack the flags
     clusflag = feature_data['cluster_member']
     rgflag = feature_data['rich_group_memb']
@@ -171,12 +193,18 @@ def plot_env_fraction(feature_data, main_only=False):
     rg_only = (rgflag) & (~filflag)
     pg_only = (pgflag) & (~filflag)
     
-    #determine the number of unique feature clusters
+    #create array of k values
     try:
-        k = len(np.unique(feature_data['Feature Cluster']))
+        k = np.unique(feature_data['Feature Cluster'])
     except:
-        print('"Feature Cluster" column not found. Please run k-means or DBSCAN clustering before continuing!')
+        print('"Feature Cluster" column not found. Please run k-means or HDBSCAN clustering before continuing!')
         return
+    
+    #create dictionaries!
+    unique_clusters = sorted(k)
+    color_map  = {c: colors[i]        for i, c in enumerate(unique_clusters)}
+    edge_map   = {c: edgecolors[i]    for i, c in enumerate(unique_clusters)}
+    shape_map  = {c: marker_shapes[i] for i, c in enumerate(unique_clusters)}
     
     #set up the flags, data, indices, x-axis environment names
     env_names = np.array(['Cluster Only',
@@ -206,18 +234,18 @@ def plot_env_fraction(feature_data, main_only=False):
     fig, ax = plt.subplots(1,1,figsize=(10,6))
     
     #create storage variables so that I can connect the dots when the loop finishes.
-    line_x = {k_cluster: [] for k_cluster in range(k)}
-    line_y = {k_cluster: [] for k_cluster in range(k)}
+    line_x = {k_cluster: [] for k_cluster in k}
+    line_y = {k_cluster: [] for k_cluster in k}
     
     #for every environment, plot its corresponding fraction and uncertainty for every feature group
     for i, env in enumerate(env_galaxies):
         
-        for k_cluster in range(k):
+        for k_cluster in k:
             
             #define label for legend, but only for the first environment (to avoid redundancies)
             label_ = None
             if i==0:
-                label_ = f'Feature Group {k_cluster}'
+                label_ = f'Feature Group {k_cluster}' if k_cluster != -1 else 'Noise Galaxies'
             
             #get the total number of galaxies in the feature cluster
             total = len(feature_data.loc[feature_data['Feature Cluster'] == k_cluster])
@@ -243,17 +271,17 @@ def plot_env_fraction(feature_data, main_only=False):
             line_x[k_cluster].append(index[i])
             line_y[k_cluster].append(fraction)
             
-            ax.scatter(index[i], fraction,  color=colors[k_cluster], label=label_, s=80, 
-                       edgecolor=edgecolors[k_cluster], marker=marker_shapes[k_cluster], zorder=3)
-            ax.errorbar(index[i] ,fraction, yerr=unc, color=colors[k_cluster],
+            ax.scatter(index[i], fraction,  color=color_map[k_cluster], label=label_, s=80, 
+                       edgecolor=edge_map[k_cluster], marker=shape_map[k_cluster], zorder=3)
+            ax.errorbar(index[i] ,fraction, yerr=unc, color=color_map[k_cluster],
                         alpha=0.5, lw=2.5, zorder=2)  #do not need fmt='None' since we are only
                                                       #plotting one data point per iteration
 
             print(f'Environment {i} cluster {k_cluster}: fraction {fraction:.3f}+/-{unc:.3f}')
     
     #connect the dots using the stored values!
-    for k_cluster in range(k):
-        ax.plot(line_x[k_cluster], line_y[k_cluster], color=colors[k_cluster], 
+    for k_cluster in unique_clusters:
+        ax.plot(line_x[k_cluster], line_y[k_cluster], color=color_map[k_cluster], 
                 linewidth=2.2, alpha=0.8, zorder=1)
     
     ax.set_xticks(index, env_names, rotation=45, fontsize=15)
@@ -281,53 +309,66 @@ def plot_group_features(median_data):
     
     k = len(median_data) #one row for every feature group
     
-    medians = [col for col in median_data.columns if '_err_' not in col and 'Feature Cluster' not in col] #median colnames
-    low_errs = [col for col in median_data.columns if '_err_low' in col]  #lower err colnames
+    #median, lower, upper error column names
+    medians  = [col for col in median_data.columns if '_err_' not in col and 'Feature Cluster' not in col] #median colnames
+    low_errs = [col for col in median_data.columns if '_err_low'  in col]  #lower err colnames
     upp_errs = [col for col in median_data.columns if '_err_high' in col] #upper err colnames
     
     #define the number of rows and columns for the subplots
     ncol = 4 #per row, I want only four columns
     nrow = int(math.ceil(len(medians)/ncol))
     
-    #desired dimensions per subplot (e.g., 4 inches wide, 3 inches high)
+    #desired dimensions per subplot (e.g., 4.5 inches wide, 3.5 inches high)
     #just to, y'know, semi-automate the scaling.
     subplot_width_inches = 4.5
     subplot_height_inches = 3.5
 
-    # Calculate total figure size
+    #calculate total figure size
     fig_width = ncol * subplot_width_inches
     fig_height = nrow * subplot_height_inches
     
     fig, axes = plt.subplots(nrows=nrow, ncols=ncol, figsize=(fig_width, fig_height))
     
+    #determine the unique cluster IDs (ignore noise)
+    unique_clusters = sorted(c for c in median_data['Feature Cluster'].unique() if c != -1)
+    
     for n, ax in enumerate(axes.flat):
         
+        #if there are more axes than feature medians, delete the unoccupied axes
         if n>=len(medians):
             fig.delaxes(ax)
             continue
         
-        for k_cluster in range(k):   #automatically ignores the '-1' cluster for DBSCAN, which is the noise.
+        #extract the correct labels for this subplot
+        med_label    = medians[n]
+        lowerr_label = low_errs[n]
+        upperr_label = upp_errs[n]
+        
+        #plot every feature group's median + uncertainty
+        for k_cluster in unique_clusters:
             
-            med_label = medians[n]
-            lowerr_label = low_errs[n]
-            upperr_label = upp_errs[n]
+            #pull the feature cluster number, ignore 0th index 
+            row = median_data.loc[median_data['Feature Cluster'] == k_cluster].iloc[0]
+
+            median  = row[med_label]
+            low_err = row[lowerr_label]
+            upp_err = row[upperr_label]
             
-            median = median_data[med_label][k_cluster]
-            low_err = median_data[lowerr_label][k_cluster]
-            upp_err = median_data[upperr_label][k_cluster]
-            
-            #will only plot one point per iteration of the k_cluster 'for' loop
+            #this line will only plot one point per iteration of the k_cluster 'for' loop
             im = ax.scatter(k_cluster, median, s=80, 
                             edgecolor=edge_colors[k_cluster], marker=marker_shapes[k_cluster],
                             color=cluster_colors[k_cluster], zorder=2, label=f'Feature Group {k_cluster}')
             
+            #plot the error bars
             err = ax.plot([k_cluster, k_cluster], [median-low_err, median+upp_err], 
                           color=edge_colors[k_cluster], zorder=1)
         
-        ax.set_xlim(-0.5, (k-1)+0.5)  #in this case, k = total number of feature groups
-                                      #k = 0, 1, 2, ...
-                                      #if len=3 but 0-2 plotted, then I don't want xmax=3.5. I want 2.5.
-
+        #set appropriate x-limits
+        ax.set_xlim(min(unique_clusters)-0.5, max(unique_clusters)+0.5)
+        
+        #make x-axis increments of 1, since k is an integer!
+        ax.xaxis.set_major_locator(mticker.MultipleLocator(base=1.0))
+        
         ax.set_xlabel('Feature Group [k]')
         ax.set_ylabel(med_label)
         ax.grid(alpha=0.1)
@@ -337,7 +378,3 @@ def plot_group_features(median_data):
     
     plt.show()
     return
-    
-    
-    
-    

@@ -135,7 +135,7 @@ def run_kmeans(colors=False, flux=False, save_table=True):
     #self-explanatory. uninvolved. demure.
     if params.PLOT_ENV_FRACTION:
         from plotting_utils import plot_env_fraction
-        plot_env_fraction(feature_data, main_only=False)
+        plot_env_fraction(feature_data, main_only=True)
     
     #return the data for further analysis, if needed.
     return feature_data

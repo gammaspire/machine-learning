@@ -1,4 +1,5 @@
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans
+from hdbscan import HDBSCAN
 from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
 
@@ -41,8 +42,8 @@ def umap_2d(feature_data, features):
     feature_data : pandas.DataFrame
         Same dataframe, but with new 'Comp1' and 'Comp2' columns appended.
     """
-    #pip install umap-learn
-    from umap import UMAP
+    from umap import UMAP   #pip install umap-learn
+    import numpy as np
 
     #extract the "matrix"
     X = feature_data[features].values
@@ -106,13 +107,13 @@ def find_optimal_k(feature_data, features, min_k=2, max_k=10, plot=True):
     return best_k
 
 
-###############################
-# DBSCAN CLUSTERING FUNCTIONS #
-###############################
+################################
+# HDBSCAN CLUSTERING FUNCTIONS #
+################################
 
-def run1_dbscan(feature_data, features, eps=0.5, min_samples=10):
+def run1_hdbscan(feature_data, features, min_cluster_size=10, min_samples=None):
     """
-    Perform DBSCAN clustering on the feature data.
+    Perform HDBSCAN clustering on the feature data.
     Adds a new 'Feature Cluster' column containing cluster labels.
     Noise points have label -1.
     """
@@ -120,57 +121,64 @@ def run1_dbscan(feature_data, features, eps=0.5, min_samples=10):
 
     X = feature_data[features]
 
-    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
-    labels = dbscan.fit_predict(X)
+    hdbscan = HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples)
+    labels = hdbscan.fit_predict(X)
 
     feature_data.loc[:, 'Feature Cluster'] = labels
 
     return feature_data
 
 
-def find_optimal_dbparams(feature_data, features, mineps=0.2, maxeps=1.2, min_minsamples=5, max_minsamples=50):
-    '''
-    Use silhouette scoring to find the optimal DBSCAN eps and min_samples parameters for the given dataset.
-    Default min and max eps expect that the input feature data are standardized!
-    '''
+def find_optimal_hdbparams(feature_data, features, min_mincluster=3, max_mincluster=30,
+                                min_samples=2):
+    """
+    Find HDBSCAN min_cluster_size hyperparameter by maximizing stability (cluster persistence).
+    Performs an elbow-like search on total stability.
+    """
     import numpy as np
     
-    silhouettes = []
-    eps_ = np.linspace(mineps, maxeps, 15)
-    min_samples_ = np.arange(min_minsamples, max_minsamples, 5)
-
-    #initiate the "best score" and set of "best params"
-    best_score = -1
-    best_params = None
-
     X = feature_data[features].values
 
-    for ep in eps_:
-        for min_samp in min_samples_:
+    #create list to store the results
+    results = []
 
-            db = DBSCAN(eps=ep, min_samples=min_samp).fit(X)
-            labels = db.labels_
+    #loop over every hyperparameter pair to sample the space 
+    for mcs in range(min_mincluster, max_mincluster + 1, 5):
+            
+        #run HDBSCAN
+        clusterer = HDBSCAN(min_cluster_size=mcs, min_samples=min_samples).fit(X)
 
-            #remove noise...remember that DBSCAN marks noise with a -1
-            mask = (labels != -1)
-            if mask.sum() < 10:
-                continue  #too few points to evaluate
+        #skip degenerate cases (where all data are "noise" --> -1)
+        if clusterer.labels_.max() < 0:
+            continue
 
-            n_clusters = len(set(labels[mask]))
-            if n_clusters <= 1:
-                continue  #silhouette will be undefined since there is <= 1 cluster!
+        #sum of cluster stabilities (persistence)
+        #high persistence --> stable, robust cluster
+        #low persistence --> spurious, flimsy cluster
+        total_stability = clusterer.cluster_persistence_.sum()
 
-            score = silhouette_score(X[mask], labels[mask])
-            silhouettes.append((ep, min_samp, score, n_clusters))
+        results.append((mcs, min_samples, total_stability))  #cluster size, min sample, stability tuple
 
-            #the higher the score, the "better" the parameters!
-            if score > best_score:
-                best_score = score
-                best_params = (ep, min_samp)
+    #convert the array of stabilities to array
+    results = np.array(results, dtype=object)
 
-    print('#'*20)
-    print(f'Best eps = {best_params[0]}, best min_sample = {best_params[1]}')
-    print(f'Best score = {best_score}')
-    print('#'*20)
+    #pull ALL of the stabilities
+    stabilities = np.array([r[2] for r in results], dtype=float)
+
+    #calculate the differences between consecutive stabilities
+    diffs = np.diff(stabilities)
     
-    return best_params[0], best_params[1]
+    #the index where the diff is smallest -- that is, where there is minimal 
+    #improvement between consecutive stabilities
+    elbow_idx = np.argmin(diffs)
+
+    best_params = results[elbow_idx][:2]
+    best_stability = stabilities[elbow_idx]
+
+    print("############################")
+    print(f"Best (elbow) min_cluster_size = {best_params[0]}")
+    print(f"Best min_samples = {best_params[1]}")
+    print(f"Total cluster stability = {best_stability:.3f}")
+    print("############################")
+
+    return best_params

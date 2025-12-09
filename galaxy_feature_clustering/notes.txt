@@ -1,3 +1,0 @@
-GALAXY CLUSTERING ALGORITHM
-(or rather, the skeletal version thereof)
-

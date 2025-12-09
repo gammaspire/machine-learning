@@ -28,7 +28,7 @@ def get_feature_names(colors=False, flux=False):
         features = [f for f in features if f not in ['CRE_W1-fixBA', 'CRE_W2']] + ['AVG_RE_W1W2']
     
     if colors:
-        features += ['NUV_r','W1_W4']
+        features += ['NUV_r','W1_W3']
     
     if flux:
         for band in params.BANDS:

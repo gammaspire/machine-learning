@@ -1,6 +1,6 @@
 '''
 OBJECTIVE: 
-* apply DBSCAN feature clustering (unsupervised machine learning) to VFS GALFIT output parameters for optical grz, unWISE W1-4.
+* apply HDBSCAN feature clustering (unsupervised machine learning) to VFS GALFIT output parameters for optical grz, unWISE W1-4.
 
 NEED:
 * vf_v2_galfit_{band}.fits
@@ -34,7 +34,7 @@ from conversion_utils import *
 from data_utils import trim_galfit_table, standardize_data
 
 from feature_utils import get_feature_names, add_average_re
-from clustering_utils import find_optimal_dbparams, run1_dbscan, umap_2d
+from clustering_utils import find_optimal_hdbparams, run1_hdbscan, umap_2d
 
 from stat_utils import *
 from init_table import *
@@ -49,9 +49,9 @@ from rich import print
 ####################################
 # RUN IT ALL RUN IT ALL RUN IT ALL #
 ####################################
-def run_dbscan(colors=False, flux=False, save_table=True):
+def run_hdbscan(colors=False, flux=False, save_table=True):
     '''
-    *If colors=True, the DBSCAN features will include the following magnitude colors:
+    *If colors=True, the HDBSCAN features will include the following magnitude colors:
         *NUV - r
         *W1 - W4
     *If flux=True, kmeans features will include the following surface brightness flux measurements:
@@ -90,40 +90,50 @@ def run_dbscan(colors=False, flux=False, save_table=True):
     #scale the feature data.
     df_scaled = standardize_data(df_trimmed, features)
     
-    #read the DBSCAN parameters from galfit_parameters.py, if defined.
-    EPS = params.EPS
+    #read the HDBSCAN parameters from galfit_parameters.py, if defined.
+    MIN_CLUSTER_SIZE = params.MIN_CLUSTER_SIZE
     MIN_SAMPLES = params.MIN_SAMPLES
     
     #if user did not pre-select parameter values, extract optimal values using the silhouette method
-    if EPS is None or MIN_SAMPLES is None:
-        EPS, MIN_SAMPLES = find_optimal_dbparams(df_scaled, features)
-    
-    #perform DBSCAN on the full set of features, using the parameters defined above.
-    feature_data = run1_dbscan(df_scaled, features, eps=EPS, min_samples=MIN_SAMPLES)
+    if MIN_CLUSTER_SIZE is None or MIN_SAMPLES is None:
         
+        MIN_CLUSTER_SIZE, MIN_SAMPLES = find_optimal_hdbparams(df_scaled, features)
+    
+    #perform HDBSCAN on the full set of features, using the parameters defined above.
+    feature_data = run1_hdbscan(df_scaled, features, min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES)
+    
+    #for HDBSCAN, will need to remove [-1] noise galaxies when looking at physical properties. 
+    #UMAP is an exception, since it relies on the full data distribution
+    #NOISE != CLUSTER
+    clean_data = feature_data[feature_data['Feature Cluster'] != -1].copy()  
+    
     if save_table:
         from stat_utils import create_median_table
         from plotting_utils import plot_group_features
         
         #create a separate pandas dataframe comprising the median, uncertainty summary
-        summary_rows = create_median_table(feature_data, features)
+        #use clean data here
+        summary_rows = create_median_table(clean_data, features)
         cluster_summary = pd.DataFrame(summary_rows)
         
         #create subplots showing each group's features and their uncertainties (from bootstrapping)
         plot_group_features(cluster_summary)
         
         #save
-        loc = os.path.join(os.getcwd(), 'dbscan_features.csv')
+        loc = os.path.join(os.getcwd(), 'hdbscan_features.csv')
         print(f"\n A summary of feature cluster median properties saved to {loc}:")
-        cluster_summary.to_csv("dbscan_features.csv", index=False)
+        cluster_summary.to_csv("hdbscan_features.csv", index=False)
     
     #if user indicated a preference for a corner plot in galfit_parameters.py, oblige them
     #must precede PCA, so that the PCA components are not included in the analysis
     if params.PLOT_CORNER:
         from plotting_utils import plot_corner
-        plot_corner(feature_data, features=None)
+        
+        #use clean_data here
+        plot_corner(clean_data, features=None)
     
     #if the user should like a 2D plot of the clusters...
+    #use ALL OF THE DATA here
     if params.PLOT_CLUSTERS:
         from plotting_utils import plot_clusters
         
@@ -132,8 +142,7 @@ def run_dbscan(colors=False, flux=False, save_table=True):
         if params.UMAP_FOR_PLOTTING:
             
             #create the Comp1, Comp2 columns. IGNORES 'Feature Cluster' column!
-            #will also output a plot of the PCA vector components
-            feature_data = umap_2d(feature_data, features, plot=params.PLOT_UMAP_COMPONENTS)
+            feature_data = umap_2d(feature_data, features)
             
         #plort.
         plot_clusters(feature_data, x=params.X, y=params.Y, PCA=params.PCA_FOR_PLOTTING, UMAP=params.UMAP_FOR_PLOTTING)
@@ -141,6 +150,7 @@ def run_dbscan(colors=False, flux=False, save_table=True):
     #self-explanatory. uninvolved. demure.
     if params.PLOT_ENV_FRACTION:
         from plotting_utils import plot_env_fraction
+        #use all data here! do not want to remove the noise from analysis!
         plot_env_fraction(feature_data, main_only=True)
     
     #return the data for further analysis, if needed.

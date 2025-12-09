@@ -7,20 +7,20 @@
 ##############################
 
 #z-band table is entirely empty. all zeros and False bools. as such, the band is excluded here.
-BANDS=['g','r','W1-fixBA','W2','W3-fixBA','W4']
+BANDS=['g','r','W1-fixBA','W2','W3-fixBA']
 COLUMNS=['CXC','CRE','CN','CNumerical_Error']
 PSCALE={'g':0.262,'r':0.262,'z':0.262,
         'W1':2.75,'W1-fixBA':2.75,'W2':2.75,'W3':2.75,'W3-fixBA':2.75,'W4':2.75}  #from mucho-galfit code
 
 
 ###############################
-####   DBSCAN PARAMETERS   ####
+####   HDBSCAN PARAMETERS   ####
 ###############################
 
-#define eps and min_samples. set to None for the script to optimize these parameters via Grid-Search and the
-#silhouette method.
-EPS=None
+#define min_samples. set to None for the script to optimize these parameters via grid-search and a
+#modified elbow method.
 MIN_SAMPLES=None
+MIN_CLUSTER_SIZE=None
 
 
 ###############################
@@ -72,7 +72,7 @@ Y='CRE_W3'
 
 
 ##############################################
-###   PLOTTING PARAMETERS -- DBSCAN ONLY   ###
+###   PLOTTING PARAMETERS -- HDBSCAN ONLY   ###
 ##############################################
 
 UMAP_FOR_PLOTTING=True
@@ -108,7 +108,7 @@ class Params():
         self.BANDS = BANDS
         self.COLUMNS = COLUMNS
         self.PSCALE = PSCALE
-        self.EPS = EPS
+        self.MIN_CLUSTER_SIZE = MIN_CLUSTER_SIZE
         self.MIN_SAMPLES = MIN_SAMPLES
         self.IQRCLIP = IQRCLIP
         self.K = K 

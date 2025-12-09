@@ -139,14 +139,14 @@ def get_kpc_columns(data_table):
 def get_photometric_colors(phot, ext): 
     from conversion_utils import nmaggies_to_mag
     
-    band = ['NUV', 'R', 'W1', 'W4'] 
+    band = ['NUV', 'R', 'W1', 'W3'] 
     
     #convert phot fluxes to extinction-corrected AB magnitudes 
-    for i in range(4): #0, 1, 2, 3...NUV, R, W1, W4
+    for i in range(4): #0, 1, 2, 3...NUV, R, W1, W3
         mAB_corr = nmaggies_to_mag(phot[f'FLUX_AP06_{band[i]}'], ext[f'A({band[i]})_SandF']) 
         phot[f'mAB_{band[i]}'] = mAB_corr 
         
     NUV_r = phot[f'mAB_NUV'] - phot['mAB_R'] 
-    W1_W4 = phot[f'mAB_W1'] - phot['mAB_W4'] 
+    W1_W3 = phot[f'mAB_W1'] - phot['mAB_W3'] 
 
-    return NUV_r, W1_W4
+    return NUV_r, W1_W3

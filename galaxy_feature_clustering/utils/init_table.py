@@ -14,12 +14,12 @@ params = Params()
 ##############################
 
 def read_phot_tables():
-    #needed photometric fluxes (in nanomaggies)
+    #needed NUV, R, W1, W3 photometric fluxes (in nanomaggies)
     phot = Table.read('data/vf_v2_legacy_ephot.fits')['FLUX_AP06_NUV','FLUX_AP06_R',
-                                                       'FLUX_AP06_W1','FLUX_AP06_W4']
+                                                       'FLUX_AP06_W1','FLUX_AP06_W3']
     #extinction corrections
     ext = Table.read('data/vf_v2_extinction.fits')['A(NUV)_SandF', 'A(R)_SandF',
-                                                   'A(W1)_SandF', 'A(W4)_SandF']
+                                                   'A(W1)_SandF', 'A(W3)_SandF']
     return phot, ext
 
 
@@ -77,10 +77,10 @@ def get_stellar_columns():
 def make_galfit_table(colors=False,flux=False):
     '''
     Read GALFIT grz, W1-4 output tables
-        * If colors=True, will include NUV-r, W1-W4 colors
+        * If colors=True, will include NUV-r, W1-W3 colors
         * If 
     Convert from astropy Table to pandas df
-    Output --> dataframe with grz, W1-4 Re, nser, CXC, CNumerical_Error columns
+    Output --> dataframe with grz, W1-3 Re, nser, CXC, CNumerical_Error columns
     '''
     #create empty astropy table
     data_table = Table()
@@ -102,8 +102,8 @@ def make_galfit_table(colors=False,flux=False):
     if colors:
         from conversion_utils import get_photometric_colors
         phot, ext = read_phot_tables()
-        NUV_r, W1_W4 = get_photometric_colors(phot, ext)
-        data_table.add_columns([NUV_r,W1_W4], names=['NUV_r','W1_W4'])
+        NUV_r, W1_W3 = get_photometric_colors(phot, ext)
+        data_table.add_columns([NUV_r,W1_W3], names=['NUV_r','W1_W3'])
     
     data_table = data_table.to_pandas()
 
