@@ -20,7 +20,7 @@ PSCALE={'g':0.262,'r':0.262,'z':0.262,
 #define min_samples. set to None for the script to optimize these parameters via grid-search and a
 #modified elbow method.
 MIN_SAMPLES=None
-MIN_CLUSTER_SIZE=None
+MIN_CLUSTER_SIZE=20
 
 
 ###############################
@@ -76,7 +76,6 @@ Y='CRE_W3'
 ##############################################
 
 UMAP_FOR_PLOTTING=True
-
 
 
 ##########################################

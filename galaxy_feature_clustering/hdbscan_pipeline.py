@@ -96,7 +96,7 @@ def run_hdbscan(colors=False, flux=False, save_table=True):
     
     #if user did not pre-select parameter values, extract optimal values using the silhouette method
     if MIN_CLUSTER_SIZE is None or MIN_SAMPLES is None:
-        
+        print('Either MIN_CLUSTER_SIZE or MIN_SAMPLE is set to None! Calculating optimal HDBSCAN parameters...')
         MIN_CLUSTER_SIZE, MIN_SAMPLES = find_optimal_hdbparams(df_scaled, features)
     
     #perform HDBSCAN on the full set of features, using the parameters defined above.
