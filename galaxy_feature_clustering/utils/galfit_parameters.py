@@ -2,6 +2,27 @@
 ##############################
 ##############################
 
+
+#################################
+#    FEATURE TABLE SAVE/LOAD    #
+#################################
+
+#if the feature df is already available, set the DF_PATH and LOADTABLE=True
+#TABLE REQUIREMENTS:
+    #trimmed to remove unreliable fits, nser>6, etc.
+    #effective radii converted from pixels to kpc
+    #IQR-clipped rows
+    #standardized values for every feature (including color and/or flux, depending on what user wants) 
+    #the _unscaled variants of every feature
+    #correct column names!
+#if the table is in data/ of the root directory, only need to specify 'data/filename.csv'
+#set SAVETABLE=True to save the feature_data table after creation! will default to DF_PATH
+#NOTE: IF SAVETABLE=TRUE, YOU MUST SET LOADTABLE=FALSE!
+LOADTABLE=True
+DF_PATH='data/feature_data.csv'
+SAVETABLE=False
+
+
 ##############################
 ## bands and GALFIT columns ##
 ##############################
@@ -13,14 +34,18 @@ PSCALE={'g':0.262,'r':0.262,'z':0.262,
         'W1':2.75,'W1-fixBA':2.75,'W2':2.75,'W3':2.75,'W3-fixBA':2.75,'W4':2.75}  #from mucho-galfit code
 
 
-###############################
-####   HDBSCAN PARAMETERS   ####
-###############################
+################################
+###    HDBSCAN PARAMETERS    ###
+################################
 
-#define min_samples. set to None for the script to optimize these parameters via grid-search and a
-#modified elbow method.
-MIN_SAMPLES=None
-MIN_CLUSTER_SIZE=20
+#define the parameters!
+MIN_SAMPLES=10
+MIN_CLUSTER_SIZE=None
+METRIC='canberra'
+SELECTION_METHOD='leaf'
+
+#optimize parameters flag! script will optimize HDBSCAN parameters via grid-search and a modified elbow method
+OPTIMIZE_HDB_PARAMS=True
 
 
 ###############################
@@ -67,13 +92,13 @@ PCA_FOR_PLOTTING=True
 PLOT_PCA_COMPONENTS=False
 
 #If PCA_FOR_PLOTTING is False, choose X and Y columns below for plotting feature clusters in 2D space
-X='CRE_W1'
-Y='CRE_W3'
+X='CN_W1_unscaled'
+Y='CN_W3_unscaled'
 
 
-##############################################
-###   PLOTTING PARAMETERS -- HDBSCAN ONLY   ###
-##############################################
+###############################################
+##    PLOTTING PARAMETERS -- HDBSCAN ONLY    ##
+###############################################
 
 UMAP_FOR_PLOTTING=True
 
@@ -107,8 +132,14 @@ class Params():
         self.BANDS = BANDS
         self.COLUMNS = COLUMNS
         self.PSCALE = PSCALE
+        self.LOADTABLE = LOADTABLE
+        self.DF_PATH = DF_PATH
+        self.SAVETABLE = SAVETABLE
         self.MIN_CLUSTER_SIZE = MIN_CLUSTER_SIZE
         self.MIN_SAMPLES = MIN_SAMPLES
+        self.METRIC = METRIC
+        self.SELECTION_METHOD = SELECTION_METHOD
+        self.OPTIMIZE_HDB_PARAMS = OPTIMIZE_HDB_PARAMS
         self.IQRCLIP = IQRCLIP
         self.K = K 
         self.PLOT_SILHOUETTES = PLOT_SILHOUETTES

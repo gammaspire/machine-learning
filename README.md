@@ -8,8 +8,13 @@ A repository containing some applications of machine learning (ML) to both my cu
   <img alt="Comparison of 'true' halo masses of Tempel+2017 group galaxies and the values predicted by a trained Random Forest Regression machine learning model. The points are color-coded by the number of galaxies in the group/cluster." src="https://github.com/gammaspire/machine-learning/blob/main/images/ML_predvstrue.png?raw=true">
 </div>
 
-- The second figure below compares the performance of the Random Forest Regression model with that of any single environment density measurement. The latter model involves fitting a line to the feature vs. Tempel+2017 halo mass plot and using the equation of this line to predict halo mass. Each line in the plot is the result of calculating the 68% confidence intervals for these simple-model predicted halo masses, as well as a solid line tracing the CIs for the ML model. The ML model performs either on-par with or more robustly than the cases of a simple linear model fit to a single feature. In fact, in the 12-14 predicted log(M200) regime, where most of the sample galaxies reside, the model's predictions are more robust by a factor of around 0.5 dex.
+- The second figure below compares the performance of the Random Forest Regression model with that of any single environment density measurement. The latter model involves fitting a line to the feature vs. Tempel+2017 halo mass plot and using the equation of this line to predict halo mass. Each line in the plot is the result of calculating the 68% confidence intervals for these simple-model predicted halo masses, as well as a solid line tracing the CIs for the ML model. The ML model performs either on-par with or more robustly than the cases of a simple linear model fit to a single feature. In fact, in the 12-14 predicted log(M200) regime, where most of the sample galaxies reside, the model's predictions are more robust by a factor of up to 0.5 dex.
 
 <div align="center">
   <img alt="Comparison of 68% Confidence Intervals for the predicted halo masses of Tempel+2017 group galaxies. Each line traces the CIs for either a simple linear fit model or the Random Forest Regression machine learning model." src="https://github.com/gammaspire/machine-learning/blob/main/images/parameter_linear_fits_CIs.png?raw=true">
 </div>
+## galaxy_feature_clustering
+ - Using k-means clustering to group galaxy morphological properties. I then examine the fraction of galaxies in these feature groups that belong to one of five environments: Virgo Cluster, rich group, poor group, filament, or pure field.
+ - The data for this project originate from the Virgo Filament Survey (VFS), a catalog comprising nearly 7,000 galaxies in and surrounding the Virgo Cluster.
+ 
+ - Images pending completion!

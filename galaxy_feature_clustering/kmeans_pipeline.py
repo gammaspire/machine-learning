@@ -69,23 +69,35 @@ def run_kmeans(colors=False, flux=False, save_table=True):
     
     print(f'USING THESE FEATURES: {features}')
     
-    #generate the dataframe
-    df_full = make_galfit_table(colors=colors,flux=flux)       
+    if params.LOADTABLE:
+        print(f'Reading feature data from {params.DF_PATH}...')
+        df_scaled = pd.read_csv(params.DF_PATH)
+
+    else:
+        #generate the dataframe
+        df_full = make_galfit_table(colors=colors,flux=flux)       
+
+        #trim the table. remove the errors and unphysical data
+        df_trimmed = trim_galfit_table(df_full)
+
+        #convert effective radii (px) to effective radii (kpc)
+        df_trimmed = get_kpc_columns(df_trimmed)
+
+        #calculate average g & r, W1 & W2 effective radii columns to df_trimmed (if those columns exist)
+        df_trimmed = add_average_re(df_trimmed)   
         
-    #trim the table. remove the errors and unphysical data
-    df_trimmed = trim_galfit_table(df_full)
+        #remove pesky outliers that lie beyond 3-sigma of their respective features' means
+        df_clipped = iqr_clipping(df_trimmed, features, k_clip=params.IQRCLIP)
+        
+        #scale the feature data.
+        df_scaled = standardize_data(df_clipped, features)
     
-    df_trimmed = get_kpc_columns(df_trimmed)
+    #write the table if SAVETABLE=True
+    if params.SAVETABLE:
+        print(f'A copy of the scaled galaxy features was written to {params.DF_PATH}!')
+        df_scaled.to_csv(params.DF_PATH, index=False)
     
-    #calculate average g & r, W1 & W2 effective radii columns to df_trimmed (if those columns exist)
-    df_trimmed = add_average_re(df_trimmed)   
-    
-    #remove pesky outliers that lie beyond 3-sigma of their respective features' means
-    df_clipped = iqr_clipping(df_trimmed, features, k_clip=params.IQRCLIP)
-    
-    #scale the feature data.
-    df_scaled = standardize_data(df_clipped, features)
-    
+    #define k cluster variable
     K = params.K
     
     #if user did not pre-select a K value, extract optimal K using the silhouette method
@@ -136,6 +148,11 @@ def run_kmeans(colors=False, flux=False, save_table=True):
     if params.PLOT_ENV_FRACTION:
         from plotting_utils import plot_env_fraction
         plot_env_fraction(feature_data, main_only=True)
+    
+    #also self-explanatory. collected. uninhibited.
+    if params.PLOT_SFRMSTAR:
+        from plotting_utils import plot_sfrmstar
+        plot_sfrmstar(feature_data)
     
     #return the data for further analysis, if needed.
     return feature_data

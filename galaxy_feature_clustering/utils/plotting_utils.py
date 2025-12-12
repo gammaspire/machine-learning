@@ -7,11 +7,14 @@ import numpy as np
 def marker_palette(feature_data):
     
     shapes = ['o', 's', '^', '*', 'D', 'v', 'X', '<', 'h', '>']
-    
+        
     try:
-        k = len(feature_data['Feature Cluster'].unique())  #number of feature groups
+        clusters = feature_data['Feature Cluster'].unique()
+        k = len(clusters)  #number of feature groups
+        noise_flag = (-1 in clusters)
+        k = k-1 if noise_flag else k
     except:
-        k = len(feature_data)  #also number of feature groups --> for one row per k cluster
+        k = len(feature_data)  #also number of feature groups --> for one row per feature group
                                #only needed if plotting medians
     
     if k == 3:
@@ -23,6 +26,7 @@ def marker_palette(feature_data):
         edge_colors = ['orangered', 'green', 'crimson', 'black']
     
     else:
+        print(k, 'clusters')
         cluster_colors = sns.color_palette('colorblind', len(feature_data['Feature Cluster'].unique()))
         edge_colors = cluster_colors
     
@@ -32,6 +36,7 @@ def marker_palette(feature_data):
         cluster_colors.insert(0, 'lightgray')
         edge_colors.insert(0, 'darkgray')
         marker_shapes.insert(0, 'o')
+        #data_labels.insert(0, 'Noise')
     
     return cluster_colors, edge_colors, marker_shapes
 
@@ -376,5 +381,36 @@ def plot_group_features(median_data):
         if n==0:
             ax.legend()
     
+    plt.show()
+    return
+
+
+def plot_sfrmstar(feature_data):
+    
+    #need logsfr, logmstar, and Feature Cluster columns!
+    if 'logsfr' not in feature_data.columns or 'logmstar' not in feature_data.columns:
+        return 'Need "logmstar" and "logsfr" columns to use this function!'
+    if 'Feature Cluster' not in feature_data.columns:
+        return 'Need "Feature Cluster" column to use this function!'
+    
+    palette, _, _ = marker_palette(feature_data)
+    
+    g = sns.JointGrid(data=feature_data, x="logmstar", y="logsfr", height=5)
+
+    # ---- MAIN SCATTER ----
+    g.plot_joint(sns.scatterplot, data=feature_data, hue="Feature Cluster", 
+                 palette=palette, alpha=0.4, edgecolor="w", linewidth=0.3)
+
+    # ---- KDE MARGINALS (the histogram distributions) ----
+    for k, color in enumerate(palette):
+        subset = feature_data[(feature_data["Feature Cluster"] == k)]
+
+        #top marginal (logmstar)
+        sns.kdeplot(x=subset["logmstar"], ax=g.ax_marg_x, color=color, fill=True, alpha=0.3, linewidth=1.2)
+
+        #right marginal (logsfr)
+        sns.kdeplot(y=subset["logsfr"], ax=g.ax_marg_y, color=color, fill=True, alpha=0.3, linewidth=1.2)
+
+    g.fig.set_size_inches(12, 6)
     plt.show()
     return

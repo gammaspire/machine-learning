@@ -1,3 +1,4 @@
+import numpy as np
 from sklearn.cluster import KMeans
 from hdbscan import HDBSCAN
 from sklearn.metrics import silhouette_score
@@ -111,7 +112,8 @@ def find_optimal_k(feature_data, features, min_k=2, max_k=10, plot=True):
 # HDBSCAN CLUSTERING FUNCTIONS #
 ################################
 
-def run1_hdbscan(feature_data, features, min_cluster_size=10, min_samples=None):
+def run1_hdbscan(feature_data, features, min_cluster_size=10, min_samples=None, 
+                 metric='euclidean', cluster_selection_method='leaf'):
     """
     Perform HDBSCAN clustering on the feature data.
     Adds a new 'Feature Cluster' column containing cluster labels.
@@ -120,8 +122,9 @@ def run1_hdbscan(feature_data, features, min_cluster_size=10, min_samples=None):
     feature_data = feature_data.copy()
 
     X = feature_data[features]
-
-    hdbscan = HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples)
+    
+    hdbscan = HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, metric=metric,
+                     cluster_selection_method=cluster_selection_method)
     labels = hdbscan.fit_predict(X)
 
     feature_data.loc[:, 'Feature Cluster'] = labels
@@ -129,41 +132,51 @@ def run1_hdbscan(feature_data, features, min_cluster_size=10, min_samples=None):
     return feature_data
 
 
-def find_optimal_hdbparams(feature_data, features, min_mincluster=3, max_mincluster=30,
-                                min_samples=2):
+def find_optimal_hdbparams(feature_data, 
+                           features,
+                           min_cluster_sizes=[10,15,20,25,30],
+                           min_samples_list=[2,5,10,15,20,'same'],
+                           metrics=['euclidean', 'manhattan', 'canberra', 'braycurtis'],
+                           cluster_methods=['eom','leaf']):
     """
-    Find HDBSCAN min_cluster_size hyperparameter by maximizing stability (cluster persistence).
-    Performs an elbow-like search on total stability.
+    Full-grid HDBSCAN hyperparameter optimization using cluster stability
+    (persistence). Returns the hyperparameter tuple at the elbow where 
+    marginal improvement in stability is minimal.
     """
-    import numpy as np
     
     X = feature_data[features].values
-
-    #create list to store the results
     results = []
-
-    #loop over every hyperparameter pair to sample the space 
-    for mcs in range(min_mincluster, max_mincluster + 1, 5):
+    
+    #a rather unwieldy approach to sampling the entire space. cope. :-)
+    for mcs in min_cluster_sizes:
+        
+        for ms in min_samples_list:
             
-        #run HDBSCAN
-        clusterer = HDBSCAN(min_cluster_size=mcs, min_samples=min_samples).fit(X)
-
-        #skip degenerate cases (where all data are "noise" --> -1)
-        if clusterer.labels_.max() < 0:
-            continue
-
-        #sum of cluster stabilities (persistence)
-        #high persistence --> stable, robust cluster
-        #low persistence --> spurious, flimsy cluster
-        total_stability = clusterer.cluster_persistence_.sum()
-
-        results.append((mcs, min_samples, total_stability))  #cluster size, min sample, stability tuple
-
-    #convert the array of stabilities to array
+            if ms == 'same':
+                ms_effective = mcs
+            else:
+                ms_effective = ms
+            
+            for metric in metrics:
+                for csm in cluster_methods:
+                    
+                    clusterer = HDBSCAN(min_cluster_size=mcs, min_samples=ms_effective, metric=metric, 
+                                        cluster_selection_method=csm).fit(X)
+                    
+                    #skip degenerate solutions (noise = -1)
+                    if clusterer.labels_.max() < 0:
+                        continue
+                    
+                    #sum of cluster stabilities (persistence)
+                    #high persistence --> stable, robust cluster
+                    #low persistence --> spurious, flimsy cluster
+                    total_stability = clusterer.cluster_persistence_.sum()
+                    
+                    results.append((mcs, ms_effective, metric, csm, total_stability))
+    
+    #convert to np array for easy slicing
     results = np.array(results, dtype=object)
-
-    #pull ALL of the stabilities
-    stabilities = np.array([r[2] for r in results], dtype=float)
+    stabilities = np.array([r[4] for r in results], dtype=float)
 
     #calculate the differences between consecutive stabilities
     diffs = np.diff(stabilities)
@@ -172,13 +185,15 @@ def find_optimal_hdbparams(feature_data, features, min_mincluster=3, max_minclus
     #improvement between consecutive stabilities
     elbow_idx = np.argmin(diffs)
 
-    best_params = results[elbow_idx][:2]
-    best_stability = stabilities[elbow_idx]
-
+    best = results[elbow_idx]
+    
     print("############################")
-    print(f"Best (elbow) min_cluster_size = {best_params[0]}")
-    print(f"Best min_samples = {best_params[1]}")
-    print(f"Total cluster stability = {best_stability:.3f}")
+    print(" Best parameters at elbow:")
+    print(f"   min_cluster_size         = {best[0]}")
+    print(f"   min_samples              = {best[1]}")
+    print(f"   metric                   = {best[2]}")
+    print(f"   cluster_selection_method = {best[3]}")
+    print(f"   total stability          = {best[4]:.3f}")
     print("############################")
-
-    return best_params
+    
+    return best[0], best[1], best[2], best[3]
