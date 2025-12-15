@@ -120,6 +120,9 @@ PLOT_CORNER=True
     #note that the environments, save for the pure field, are not entirely decoupled from one another. one galaxies could belong to multiple environments.
 PLOT_ENV_FRACTION=True
 
+#plot each feature cluster on an SFR vs. Mstar plot, with histogram sub-axes to show the scatter distribution
+PLOT_SFRMSTAR=True
+
 
 ###############################
 ###############################
@@ -149,5 +152,6 @@ class Params():
         self.UMAP_FOR_PLOTTING = UMAP_FOR_PLOTTING
         self.PLOT_PCA_COMPONENTS = PLOT_PCA_COMPONENTS
         self.PLOT_ENV_FRACTION = PLOT_ENV_FRACTION
+        self.PLOT_SFRMSTAR = PLOT_SFRMSTAR
         self.X = X
         self.Y = Y

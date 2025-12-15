@@ -123,10 +123,16 @@ def run1_hdbscan(feature_data, features, min_cluster_size=10, min_samples=None,
 
     X = feature_data[features]
     
-    hdbscan = HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, metric=metric,
-                     cluster_selection_method=cluster_selection_method)
-    labels = hdbscan.fit_predict(X)
-
+    try:
+        hdbscan = HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, metric=metric,
+                         cluster_selection_method=cluster_selection_method)
+        labels = hdbscan.fit_predict(X)
+    
+    except:
+        hdbscan = HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, metric=metric,
+                     cluster_selection_method=cluster_selection_method, core_dist_n_jobs=1)
+        labels = hdbscan.fit_predict(X)
+    
     feature_data.loc[:, 'Feature Cluster'] = labels
 
     return feature_data
@@ -143,36 +149,53 @@ def find_optimal_hdbparams(feature_data,
     (persistence). Returns the hyperparameter tuple at the elbow where 
     marginal improvement in stability is minimal.
     """
+    from tqdm.notebook import tqdm   #the notebook version!
     
     X = feature_data[features].values
     results = []
     
-    #a rather unwieldy approach to sampling the entire space. cope. :-)
+    #below is a rather unwieldy approach to sampling the entire space. cope. :-)
+    #at least I include a progress bar! ...right?
+    
+    #compute total number of iterations. needed for progress bar.
+    #represents the total number of possible hyperparameter combinations
+    total_iters = len(min_cluster_sizes) * len(min_samples_list) * len(metrics) * len(cluster_methods)
+
+    #create a single tqdm progress bar!
+    pbar = tqdm(total=total_iters, desc="HDBSCAN hyperparameter sweep")
+
     for mcs in min_cluster_sizes:
-        
         for ms in min_samples_list:
-            
+
             if ms == 'same':
                 ms_effective = mcs
             else:
                 ms_effective = ms
-            
+
             for metric in metrics:
                 for csm in cluster_methods:
-                    
-                    clusterer = HDBSCAN(min_cluster_size=mcs, min_samples=ms_effective, metric=metric, 
-                                        cluster_selection_method=csm).fit(X)
+
+                    try:
+                        clusterer = HDBSCAN(min_cluster_size=mcs, min_samples=ms_effective, metric=metric,
+                                            cluster_selection_method=csm).fit(X)
+                    except:
+                        clusterer = HDBSCAN(min_cluster_size=mcs, min_samples=ms_effective, metric=metric,
+                                            cluster_selection_method=csm, core_dist_n_jobs=1).fit(X)
                     
                     #skip degenerate solutions (noise = -1)
                     if clusterer.labels_.max() < 0:
+                        pbar.update(1)
                         continue
-                    
+
                     #sum of cluster stabilities (persistence)
                     #high persistence --> stable, robust cluster
                     #low persistence --> spurious, flimsy cluster
                     total_stability = clusterer.cluster_persistence_.sum()
-                    
+
                     results.append((mcs, ms_effective, metric, csm, total_stability))
+
+                    #update progress bar
+                    pbar.update(1)
     
     #convert to np array for easy slicing
     results = np.array(results, dtype=object)
