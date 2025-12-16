@@ -23,28 +23,6 @@ def read_phot_tables():
     return phot, ext
 
 
-def get_SB_flux():
-    '''
-    AIM: pull log10(flux) measurements at the needed wavelengths for SB22, SB25.
-    NOTE: very likely will not be used ty.
-    '''
-    phot = Table.read('data/vf_v2_legacy_ephot.fits')
-    
-    phot_sb = Table()
-    
-    for band in params.BANDS:
-        band = band.split('-')[0].upper()  #split band into components delimited by '-' (e.g., 'W3-fixBA')
-                                           #then take the zeroth component
-                                           #THEN capitalize all alphabet characters
-
-        phot_sb[f'FLUX_SB22_{band}'] = np.log10(phot[f'FLUX_SB22_{band}'])
-        phot_sb[f'FLUX_SB25_{band}'] = np.log10(phot[f'FLUX_SB25_{band}'])
-    
-    phot_sb = phot_sb.to_pandas()
-    
-    return phot_sb
-
-
 #yes, I read the environment table twice. I like organization. cope.
 def get_vcosmic_column():
     env = Table.read('data/vf_v2_environment.fits')
@@ -74,8 +52,7 @@ def get_stellar_columns():
 # INITIALIZE THE FEATURE TABLE #
 ################################
 
-def make_galfit_table(colors=False,flux=False):
-    '''
+def make_galfit_table(colors=False):
     Read GALFIT grz, W1-4 output tables
         * If colors=True, will include NUV-r, W1-W3 colors
         * If 
@@ -110,9 +87,5 @@ def make_galfit_table(colors=False,flux=False):
     #append environment columns
     envflags = get_env_columns()
     data_table = pd.concat([data_table.copy(), envflags.copy()],axis=1)
-    
-    if flux:
-        phot_tab = get_SB_flux()
-        data_table = pd.concat([data_table.copy(), phot_tab.copy()],axis=1)
 
     return data_table

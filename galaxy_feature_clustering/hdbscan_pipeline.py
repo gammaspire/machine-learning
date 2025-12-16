@@ -49,14 +49,11 @@ from rich import print
 ####################################
 # RUN IT ALL RUN IT ALL RUN IT ALL #
 ####################################
-def run_hdbscan(colors=False, flux=False, save_table=True):
+def run_hdbscan(colors=False, save_table=True):
     '''
     *If colors=True, the HDBSCAN features will include the following magnitude colors:
         *NUV - r
         *W1 - W4
-    *If flux=True, kmeans features will include the following surface brightness flux measurements:
-        *FLUX_SB22_{band}
-        *FLUX_SB25_{band}
     *If save_table=True, unscaled median feature data and their uncertainties will be saved as a .csv
         *save loc will be the same as the location of galfit_kmeans.py
     *Note that these magnitudes originate from extinction-corrected photometric fluxes
@@ -66,7 +63,7 @@ def run_hdbscan(colors=False, flux=False, save_table=True):
     print('NOTE: be sure to edit galfit_parameters.py so parameters are to your liking!')
     
     #pull the full list of features which will be clustered
-    features = get_feature_names(colors=colors,flux=flux)
+    features = get_feature_names(colors=colors)
     
     print(f'USING THESE FEATURES: {features}')
     
@@ -77,7 +74,7 @@ def run_hdbscan(colors=False, flux=False, save_table=True):
     else:
         
         #generate the dataframe
-        df_full = make_galfit_table(colors=colors,flux=flux)       
+        df_full = make_galfit_table(colors=colors)       
 
         #trim the table. remove the errors and unphysical data
         df_trimmed = trim_galfit_table(df_full)

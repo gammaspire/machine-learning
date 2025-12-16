@@ -48,14 +48,11 @@ from rich import print
 ####################################
 # RUN IT ALL RUN IT ALL RUN IT ALL #
 ####################################
-def run_kmeans(colors=False, flux=False, save_table=True):
+def run_kmeans(colors=False, save_table=True):
     '''
     *If colors=True, the kmeans features will include the following magnitude colors:
         *NUV - r
-        *W1 - W4
-    *If flux=True, kmeans features will include the following surface brightness flux measurements:
-        *FLUX_SB22_{band}
-        *FLUX_SB25_{band}
+        *W1 - W3
     *If save_table=True, unscaled median feature data and their uncertainties will be saved as a .csv
         *save loc will be the same as the location of galfit_kmeans.py
     *Note that these magnitudes originate from extinction-corrected photometric fluxes
@@ -65,7 +62,7 @@ def run_kmeans(colors=False, flux=False, save_table=True):
     print('NOTE: be sure to edit galfit_parameters.py so parameters are to your liking!')
     
     #pull the full list of features which will be clustered
-    features = get_feature_names(colors=colors,flux=flux)
+    features = get_feature_names(colors=colors)
     
     print(f'USING THESE FEATURES: {features}')
     
@@ -75,7 +72,7 @@ def run_kmeans(colors=False, flux=False, save_table=True):
 
     else:
         #generate the dataframe
-        df_full = make_galfit_table(colors=colors,flux=flux)       
+        df_full = make_galfit_table(colors=colors)       
 
         #trim the table. remove the errors and unphysical data
         df_trimmed = trim_galfit_table(df_full)
@@ -84,7 +81,7 @@ def run_kmeans(colors=False, flux=False, save_table=True):
         df_trimmed = get_kpc_columns(df_trimmed)
 
         #calculate average g & r, W1 & W2 effective radii columns to df_trimmed (if those columns exist)
-        df_trimmed = add_average_re(df_trimmed)   
+        #df_trimmed = add_average_re(df_trimmed)   
         
         #remove pesky outliers that lie beyond 3-sigma of their respective features' means
         df_clipped = iqr_clipping(df_trimmed, features, k_clip=params.IQRCLIP)
@@ -147,7 +144,7 @@ def run_kmeans(colors=False, flux=False, save_table=True):
     #self-explanatory. uninvolved. demure.
     if params.PLOT_ENV_FRACTION:
         from plotting_utils import plot_env_fraction
-        plot_env_fraction(feature_data, main_only=True)
+        plot_env_fraction(feature_data, main_only=False)
     
     #also self-explanatory. collected. uninhibited.
     if params.PLOT_SFRMSTAR:

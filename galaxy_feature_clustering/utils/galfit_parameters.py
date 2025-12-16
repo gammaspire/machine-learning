@@ -12,7 +12,7 @@
     #trimmed to remove unreliable fits, nser>6, etc.
     #effective radii converted from pixels to kpc
     #IQR-clipped rows
-    #standardized values for every feature (including color and/or flux, depending on what user wants) 
+    #standardized values for every feature (possibly including color, depending on user input) 
     #the _unscaled variants of every feature
     #correct column names!
 #if the table is in data/ of the root directory, only need to specify 'data/filename.csv'

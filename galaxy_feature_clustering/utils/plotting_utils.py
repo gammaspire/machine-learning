@@ -3,6 +3,8 @@ import matplotlib.ticker as mticker
 import seaborn as sns
 import numpy as np
 
+from feature_utils import make_label_dictionary
+
 
 def marker_palette(feature_data):
     
@@ -212,15 +214,15 @@ def plot_env_fraction(feature_data, main_only=True):
     shape_map  = {c: marker_shapes[i] for i, c in enumerate(unique_clusters)}
     
     #set up the flags, data, indices, x-axis environment names
-    env_names = np.array(['Cluster Only',
-                 'Cluster\n&\nFilament', 
+    env_names = np.array(['Pure Cluster',
+                 'All Cluster', 
                  'Filament\n&\nCluster',
                  'Filament\n&\nRich Group',
-                 'Rich Group \n Only',
-                 'Filament All\n(PG+RG+CLUS)',
+                 'Pure Rich \n Group',
+                 'All Filament\n(PG+RG+CLUS)',
                  'Filament \n & \n Poor Group',
-                 'Poor \n Group Only',
-                 'Filament Only',
+                 'Pure Poor \n Group',
+                 'Pure Filament',
                  'Pure Field'])
         
     #place the flags in a neat and tidy list

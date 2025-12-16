@@ -6,7 +6,7 @@ params = Params()
 # PULL THE NAMES OF THE GALAXY FEATURES #
 #########################################
 
-def get_feature_names(colors=False, flux=False):
+def get_feature_names(colors=False):
     '''
     AIM: return list of all feature names for specified parameters in, surprise, galfit_parameters.py
     '''
@@ -19,25 +19,31 @@ def get_feature_names(colors=False, flux=False):
     features = re_cols + nser_cols
     
     #use averages of g&r, W1&W2 effective radii
-    if 'CRE_r' in features and 'CRE_g' in features:
-        print('Using average g and r effective radius!')
-        features = [f for f in features if f not in ['CRE_r', 'CRE_g']] + ['AVG_RE_gr']
+    #if 'CRE_r' in features and 'CRE_g' in features:
+    #    print('Using average g and r effective radius!')
+    #    features = [f for f in features if f not in ['CRE_r', 'CRE_g']] + ['AVG_RE_gr']
     
-    if 'CRE_W1-fixBA' and 'CRE_W2' in features:
-        print('Using average W1 and W2 effective radius!')
-        features = [f for f in features if f not in ['CRE_W1-fixBA', 'CRE_W2']] + ['AVG_RE_W1W2']
+    #if 'CRE_W1-fixBA' and 'CRE_W2' in features:
+    #    print('Using average W1 and W2 effective radius!')
+    #    features = [f for f in features if f not in ['CRE_W1-fixBA', 'CRE_W2']] + ['AVG_RE_W1W2']
     
     if colors:
         features += ['NUV_r','W1_W3']
-    
-    if flux:
-        for band in params.BANDS:
-            band = band.split('-')[0].upper()
-            features += [f'FLUX_SB22_{band}']
-            features += [f'FLUX_SB25_{band}']
 
     #and return
     return features
+
+
+def make_label_dictionary():
+    '''
+    Create label dictionary to better ensure that the plot labels with physical parameters are UNDERSTANDABLE.
+    The list of possible features is written below. Add and subtract at will.
+        * Remember that this list is meant to be all-encompassing! Set both arguments to True.
+    '''
+    
+    possible_features = get_feature_names(colors=True)
+    feature_dict = {
+    
 
 
 ############################################################
