@@ -3,7 +3,7 @@ import matplotlib.ticker as mticker
 import seaborn as sns
 import numpy as np
 
-from feature_utils import make_label_dictionary
+from feature_utils import make_label_dictionary, get_feature_label
 
 
 def marker_palette(feature_data):
@@ -148,6 +148,9 @@ def plot_corner(feature_data, features=None):
     import warnings
     warnings.filterwarnings('ignore', category=FutureWarning)
     
+    #for editing the column labels so axes are readable!
+    from feature_utils import get_feature_label, make_label_dictionary
+    
     cluster_colors, _, _ = marker_palette(feature_data)
     
     #we want to plot the UNSCALED features!
@@ -155,12 +158,11 @@ def plot_corner(feature_data, features=None):
     if features is None:
         features=['CRE_W1-fixBA_unscaled', 'CN_W1-fixBA_unscaled', 
                   'CRE_W3-fixBA_unscaled', 'CN_W3-fixBA_unscaled',
-                  'CRE_r_unscaled', 'CN_r_unscaled']
-        if 'AVG_RE_gr_unscaled' in feature_data.columns:
-            features[4] = 'AVG_RE_gr_unscaled'
-        if 'AVG_RE_W1W2_unscaled' in feature_data.columns:
-            features[0] = 'AVG_RE_W1W2_unscaled'
-    
+                  'CRE_g_unscaled', 'CN_g_unscaled']
+        #if 'AVG_RE_gr_unscaled' in feature_data.columns:
+        #    features[4] = 'AVG_RE_gr_unscaled'
+        #if 'AVG_RE_W1W2_unscaled' in feature_data.columns:
+        #    features[0] = 'AVG_RE_W1W2_unscaled'
     
     unique_clusters = sorted(feature_data['Feature Cluster'].unique())
     color_map = {c: cluster_colors[i] for i, c in enumerate(unique_clusters)}
@@ -168,9 +170,17 @@ def plot_corner(feature_data, features=None):
     g = sns.pairplot(feature_data, vars=features, hue='Feature Cluster', 
                      palette=color_map, corner=True,
                      plot_kws={'alpha': 0.6, 's': 20}, diag_kind=None)  #'kde')
+    
+    #edit the labels!
+    label_dict = make_label_dictionary()
 
     #pull the axes from the corner plot
     axes_flat = [ax for ax in g.axes.flat if ax is not None]
+    for ax in axes_flat:
+        if ax.get_xlabel():
+            ax.set_xlabel(get_feature_label(ax.get_xlabel(), label_dict))
+        if ax.get_ylabel():
+            ax.set_ylabel(get_feature_label(ax.get_ylabel(), label_dict))
     
     g._legend.remove()
     #g.fig.suptitle('Feature Clusters in Physical Space', y=1.02)
@@ -301,66 +311,96 @@ def plot_env_fraction(feature_data, main_only=True):
     ax.legend(loc='upper left')
     
     plt.show()
-    
-    
-def plot_group_features(median_data):
+
+
+def plot_group_features(median_data, layout_dict=None):
     '''
     AIM: create multiple subplots showing each group's features and their associated uncertainties (taken from bootstrapping)
     * median_data should comprise a dataframe table of feature medians and lower+upper uncertainties for each of the feature groups.
+    * layout_dict --> a python dictionary comprising the coordinates on a 3x3 grid where each feature 
+        will be plotted, as well as the column name of that feature in median_data
+            * If None, defaults to W1, W3, and g-band Re and nser; Size Ratio, NUV-r and W1-W3 colors
+    *
     '''
     
-    import math
+    from math import ceil
     
     #extract the colors...
     cluster_colors, edge_colors, marker_shapes = marker_palette(median_data)
     
-    k = len(median_data) #one row for every feature group
+    #extract the label dictionary for the y-axis!
+    label_dict = make_label_dictionary()
     
-    #median, lower, upper error column names
-    medians  = [col for col in median_data.columns if '_err_' not in col and 'Feature Cluster' not in col] #median colnames
-    low_errs = [col for col in median_data.columns if '_err_low'  in col]  #lower err colnames
-    upp_errs = [col for col in median_data.columns if '_err_high' in col] #upper err colnames
+    #in the median_data table, there is one row for every kth feature group
+    k = len(median_data)
     
-    #define the number of rows and columns for the subplots
-    ncol = 4 #per row, I want only four columns
-    nrow = int(math.ceil(len(medians)/ncol))
+    #intended layout dictionary for subpl0ts.
+    if layout_dict is None or not isinstance(layout_dict, dict):
+        
+        message = 'Using default layout dictionary for median group feature subplots!'
+        
+        print('#'*len(message))
+        print(message)
+        print('#'*len(message))
+        
+        layout_dict =  {(0, 0): 'CRE_g_unscaled',
+                        (0, 1): 'CRE_W1-fixBA_unscaled',
+                        (0, 2): 'CRE_W3-fixBA_unscaled',
+                        (1, 0): 'CN_g_unscaled',
+                        (1, 1): 'CN_W1-fixBA_unscaled',
+                        (1, 2): 'CN_W3-fixBA_unscaled',
+                        (2, 0): 'Size Ratio',
+                        (2, 1): 'NUV_r',
+                        (2, 2): 'W1_W3'}
+        ncol = 3
+        nrow = 3
     
+    else:
+        #the last layout_dict entry is (i, j), where i=nrow and j=ncol
+        #sort coordinates from least to greatest, pull the "greatest" from the list
+        #then nrow = (i_last + 1)
+        #for ncol...isolate the first row and determine the maximum column in that row.
+        sorted_keys = sorted(layout_dict.keys())
+        
+        last_row = sorted_keys[-1][0]
+        last_col = [n for n in sorted_keys if n[0]==0][-1][1]
+        
+        nrow = last_row + 1
+        ncol = last_col + 1
+
     #desired dimensions per subplot (e.g., 4.5 inches wide, 3.5 inches high)
     #just to, y'know, semi-automate the scaling.
     subplot_width_inches = 4.5
     subplot_height_inches = 3.5
-
+    
     #calculate total figure size
     fig_width = ncol * subplot_width_inches
     fig_height = nrow * subplot_height_inches
     
-    fig, axes = plt.subplots(nrows=nrow, ncols=ncol, figsize=(fig_width, fig_height))
-    
     #determine the unique cluster IDs (ignore noise)
     unique_clusters = sorted(c for c in median_data['Feature Cluster'].unique() if c != -1)
+
+    #INITIATE
+    fig, axes = plt.subplots(nrows=nrow, ncols=ncol, figsize=(fig_width, fig_height), constrained_layout=True)
     
-    for n, ax in enumerate(axes.flat):
+    #read values from the dictionary, 
+    for (i, j), med_label in layout_dict.items():        
+
+        ax = axes[i, j]   #i=row, j=column
         
-        #if there are more axes than feature medians, delete the unoccupied axes
-        if n>=len(medians):
-            fig.delaxes(ax)
-            continue
-        
-        #extract the correct labels for this subplot
-        med_label    = medians[n]
-        lowerr_label = low_errs[n]
-        upperr_label = upp_errs[n]
+        lowerr_label = med_label + '_err_low'
+        upperr_label = med_label + '_err_high'
         
         #plot every feature group's median + uncertainty
         for k_cluster in unique_clusters:
             
             #pull the feature cluster number, ignore 0th index 
             row = median_data.loc[median_data['Feature Cluster'] == k_cluster].iloc[0]
-
+            
             median  = row[med_label]
             low_err = row[lowerr_label]
             upp_err = row[upperr_label]
-            
+                        
             #this line will only plot one point per iteration of the k_cluster 'for' loop
             im = ax.scatter(k_cluster, median, s=80, 
                             edgecolor=edge_colors[k_cluster], marker=marker_shapes[k_cluster],
@@ -370,6 +410,12 @@ def plot_group_features(median_data):
             err = ax.plot([k_cluster, k_cluster], [median-low_err, median+upp_err], 
                           color=edge_colors[k_cluster], zorder=1)
         
+        #assign row limits
+        if 'CN' in med_label:
+            ax.set_ylim(0,2)
+        elif 'CRE' in med_label:
+            ax.set_ylim(0,5)
+        
         #set appropriate x-limits
         ax.set_xlim(min(unique_clusters)-0.5, max(unique_clusters)+0.5)
         
@@ -377,14 +423,13 @@ def plot_group_features(median_data):
         ax.xaxis.set_major_locator(mticker.MultipleLocator(base=1.0))
         
         ax.set_xlabel('Feature Group [k]')
-        ax.set_ylabel(med_label)
+        ax.set_ylabel(get_feature_label(med_label, label_dict))   #need the fancy schmancy name!
         ax.grid(alpha=0.1)
-        
-        if n==0:
-            ax.legend()
     
     plt.show()
     return
+
+
 
 
 def plot_sfrmstar(feature_data):
@@ -402,7 +447,9 @@ def plot_sfrmstar(feature_data):
     # ---- MAIN SCATTER ----
     g.plot_joint(sns.scatterplot, data=feature_data, hue="Feature Cluster", 
                  palette=palette, alpha=0.4, edgecolor="w", linewidth=0.3)
-
+    g.ax_joint.set_xlim(5,)
+    g.ax_joint.set_ylim(-7.5,)
+    
     # ---- KDE MARGINALS (the histogram distributions) ----
     for k, color in enumerate(palette):
         subset = feature_data[(feature_data["Feature Cluster"] == k)]
@@ -412,7 +459,8 @@ def plot_sfrmstar(feature_data):
 
         #right marginal (logsfr)
         sns.kdeplot(y=subset["logsfr"], ax=g.ax_marg_y, color=color, fill=True, alpha=0.3, linewidth=1.2)
-
+    
     g.fig.set_size_inches(12, 6)
+    
     plt.show()
     return

@@ -18,9 +18,9 @@
 #if the table is in data/ of the root directory, only need to specify 'data/filename.csv'
 #set SAVETABLE=True to save the feature_data table after creation! will default to DF_PATH
 #NOTE: IF SAVETABLE=TRUE, YOU MUST SET LOADTABLE=FALSE!
-LOADTABLE=True
+LOADTABLE=False
 DF_PATH='data/feature_data.csv'
-SAVETABLE=False
+SAVETABLE=True
 
 
 ##############################
@@ -28,8 +28,11 @@ SAVETABLE=False
 ##############################
 
 #z-band table is entirely empty. all zeros and False bools. as such, the band is excluded here.
+#BANDS AND COLUMNNAMES IN THE GALFIT DATA TABLE
 BANDS=['g','r','W1-fixBA','W2','W3-fixBA']
-COLUMNS=['CXC','CRE','CN','CNumerical_Error']
+COLUMNS=['CXC','CRE','CN','CNumerical_Error']   #NOTE THESE ARE FEATURE LABELS ARE LATER CHANGED
+                                                #CRE --> Effective Radius
+                                                #CN --> Sersic Index
 PSCALE={'g':0.262,'r':0.262,'z':0.262,
         'W1':2.75,'W1-fixBA':2.75,'W2':2.75,'W3':2.75,'W3-fixBA':2.75,'W4':2.75}  #from mucho-galfit code
 
@@ -92,8 +95,8 @@ PCA_FOR_PLOTTING=True
 PLOT_PCA_COMPONENTS=False
 
 #If PCA_FOR_PLOTTING is False, choose X and Y columns below for plotting feature clusters in 2D space
-X='CN_W1_unscaled'
-Y='CN_W3_unscaled'
+X='[W1] Sersic Index_unscaled'
+Y='[W3] Sersic Index_unscaled'
 
 
 ###############################################
@@ -113,7 +116,15 @@ PLOT_CLUSTERS=True
 
 #set to True for the script to generate a corner plot of all feature clusters in a 
 #physically meaningful space (i.e., feature vs. feature)
-PLOT_CORNER=True
+PLOT_CORNER=False
+
+#set to True for the script to create subplots of the median galaxy features (including Size Ratio, NUV-r, and W1-W3)
+PLOT_MEDIANS=True
+
+#the subplot coordinate/columnname dictionary to help organize the figure layout. If None, will default to using W1, W3, g-band Re+nser, as well as Size Ratio, NUV-r, and W1-W3.
+#must be a python dictionary. for example, if you only want one subplot with g-band effective radius:
+    # LAYOUT_DICT = {(0, 0): 'CRE_g_unscaled'}
+LAYOUT_DICT=None
 
 #set to True for script to plot the fraction of galaxies in one of five VFS environments from Castignani+2022 (pure field, filament, poor group, rich group, cluster). these fractions are split up into however many feature clusters the user defines.
     #e.g., feature cluster 0 will be divided into five environments, feature cluster 1 will be divided into five environments, etc.
@@ -148,10 +159,12 @@ class Params():
         self.PLOT_SILHOUETTES = PLOT_SILHOUETTES
         self.PLOT_CORNER = PLOT_CORNER
         self.PLOT_CLUSTERS = PLOT_CLUSTERS
+        self.PLOT_MEDIANS = PLOT_MEDIANS
         self.PCA_FOR_PLOTTING = PCA_FOR_PLOTTING
         self.UMAP_FOR_PLOTTING = UMAP_FOR_PLOTTING
         self.PLOT_PCA_COMPONENTS = PLOT_PCA_COMPONENTS
         self.PLOT_ENV_FRACTION = PLOT_ENV_FRACTION
         self.PLOT_SFRMSTAR = PLOT_SFRMSTAR
+        self.LAYOUT_DICT = LAYOUT_DICT
         self.X = X
         self.Y = Y

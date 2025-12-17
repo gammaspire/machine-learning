@@ -38,6 +38,9 @@ from clustering_utils import find_optimal_k, run1_kmeans, pca_2d
 from stat_utils import *
 from init_table import *
 
+from galfit_parameters import Params
+params = Params()
+
 import numpy as np
 np.seterr(all='ignore')  #ignore those pesky log10() errors
 
@@ -63,18 +66,18 @@ def run_kmeans(colors=False, save_table=True):
     
     #pull the full list of features which will be clustered
     features = get_feature_names(colors=colors)
-    
+        
     print(f'USING THESE FEATURES: {features}')
-    
+      
     if params.LOADTABLE:
         print(f'Reading feature data from {params.DF_PATH}...')
         df_scaled = pd.read_csv(params.DF_PATH)
 
     else:
         #generate the dataframe
-        df_full = make_galfit_table(colors=colors)       
-
-        #trim the table. remove the errors and unphysical data
+        df_full = make_galfit_table(colors=colors)  
+        
+        #trim the table. remove the errors and unphysical data.
         df_trimmed = trim_galfit_table(df_full)
 
         #convert effective radii (px) to effective radii (kpc)
@@ -91,7 +94,7 @@ def run_kmeans(colors=False, save_table=True):
     
     #write the table if SAVETABLE=True
     if params.SAVETABLE:
-        print(f'A copy of the scaled galaxy features was written to {params.DF_PATH}!')
+        print(f'A copy of unscaled/scaled galaxy features was written to {params.DF_PATH}!')
         df_scaled.to_csv(params.DF_PATH, index=False)
     
     #define k cluster variable
@@ -106,19 +109,21 @@ def run_kmeans(colors=False, save_table=True):
     
     if save_table:
         from stat_utils import create_median_table
-        from plotting_utils import plot_group_features
         
         #create a separate pandas dataframe comprising the median, uncertainty summary
         summary_rows = create_median_table(feature_data, features)
         cluster_summary = pd.DataFrame(summary_rows)
         
-        #plot
-        plot_group_features(cluster_summary)
-        
         #save
         loc = os.path.join(os.getcwd(), 'kmeans_features.csv')
         print(f"\n A summary of feature cluster median properties saved to {loc}:")
         cluster_summary.to_csv("kmeans_features.csv", index=False)
+    
+    if params.PLOT_MEDIANS:
+        from plotting_utils import plot_group_features
+        
+        #plot
+        plot_group_features(cluster_summary, layout_dict=params.LAYOUT_DICT)
     
     #if user indicated a preference for a corner plot in galfit_parameters.py, oblige them
     #must precede PCA if any, so that these features are not included in the analysis

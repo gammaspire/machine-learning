@@ -51,7 +51,7 @@ def create_median_table(feature_data, features):
     '''
     
     #get list of unscaled feature columns, including the size ratios
-    features_unscaled = [feature+'_unscaled' for feature in features] + ['Size Ratio']
+    features_unscaled = [feature+'_unscaled' for feature in features] + ['Size Ratio'] + ['NUV_r'] + ['W1_W3']
 
     #initialize the rows
     summary_rows = []

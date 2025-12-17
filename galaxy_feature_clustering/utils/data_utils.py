@@ -8,7 +8,7 @@ from galfit_parameters import Params
 params = Params()
 
 
-def trim_galfit_table(full_df):
+def trim_galfit_table(full_df, colors=False):
     '''
     Apply trimming flags -- non-data, Re, nser, numerical error
     '''

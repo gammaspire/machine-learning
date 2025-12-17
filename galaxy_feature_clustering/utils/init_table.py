@@ -6,6 +6,7 @@ from astropy.table import Table
 import numpy as np
 import pandas as pd
 
+from conversion_utils import get_photometric_colors
 from galfit_parameters import Params
 params = Params()
 
@@ -53,9 +54,9 @@ def get_stellar_columns():
 ################################
 
 def make_galfit_table(colors=False):
+    '''
     Read GALFIT grz, W1-4 output tables
         * If colors=True, will include NUV-r, W1-W3 colors
-        * If 
     Convert from astropy Table to pandas df
     Output --> dataframe with grz, W1-3 Re, nser, CXC, CNumerical_Error columns
     '''
@@ -76,11 +77,10 @@ def make_galfit_table(colors=False):
     #add a size ratio column...just because. (I actually need it for analysis.)
     data_table['Size Ratio'] = data_table['CRE_W3-fixBA'] / data_table['CRE_W1-fixBA']
     
-    if colors:
-        from conversion_utils import get_photometric_colors
-        phot, ext = read_phot_tables()
-        NUV_r, W1_W3 = get_photometric_colors(phot, ext)
-        data_table.add_columns([NUV_r,W1_W3], names=['NUV_r','W1_W3'])
+    #add NUV-r, W1-W3 colors
+    phot, ext = read_phot_tables()
+    NUV_r, W1_W3 = get_photometric_colors(phot, ext)   #from conversion_utils
+    data_table.add_columns([NUV_r,W1_W3], names=['NUV_r','W1_W3'])
     
     data_table = data_table.to_pandas()
 
