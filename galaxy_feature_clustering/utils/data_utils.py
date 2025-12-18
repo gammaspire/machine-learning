@@ -1,55 +1,44 @@
-#utility functions for trimming and standardizing...
-
+'''
+For all of your numeric and statistic needs. :-)
+'''
 
 import numpy as np
-import pandas as pd
-from astropy.table import Table
-from galfit_parameters import Params
-params = Params()
 
+###################################################
+# MODIFIED BOOTSTRAP FUNCTION, COURTESY OF RFINN  #
+###################################################
 
-def trim_galfit_table(full_df, colors=False):
+def get_bootstrap_confint(d,bootfunc=np.median,nboot=2000):
+    
+    from astropy.stats import bootstrap
+    
     '''
-    Apply trimming flags -- non-data, Re, nser, numerical error
+    AIM: Calculate (lower, upper) bootstrap 68% confidence interval for any 
+         statistic bootfunc applied to data d.
+    
+    ASTROPY.STATS.BOOTSTRAP
+        -create nboot resamplings of the data and calculate the bootfunc of each resample.
+        -will return the e.g. median for each of the nboot resamples
     '''
-    
-    #unfortunately have to trim any row which has at least one of the below problems.
-    
-    ngal_before = len(full_df)
-    
-    #center x-position, Nser, numerical error columns
-    xyc_cols = [f'CXC_{band}' for band in params.BANDS]
-    nser_cols = [f'CN_{band}' for band in params.BANDS]
-    numerr_cols = [f'CNumerical_Error_{band}' for band in params.BANDS]
-    
-    #drop row if any central x pixel coordinate cell is zero
-    full_df = full_df.loc[~(full_df[xyc_cols]==0).any(axis=1)]
-        
-    #drop rows with any nser > 6.
-    full_df = full_df.loc[~(full_df[nser_cols]>6).any(axis=1)]
-        
-    #drop rows with any convolved numerical error
-    full_df = full_df.loc[~(full_df[numerr_cols]).any(axis=1)]
-        
-    #if magnitude colors are in the list of features, then we have to apply
-    #a quality flag here too. This amount to just dropping the NaNs
-    if 'NUV_r' in full_df.columns:
-        full_df = full_df.copy().dropna()
-        message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT and PHOT quality flags.'
-    else:
-        message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT quality flags.'
-        
-    print('#'*len(message))
-    print(message)
-    print('#'*len(message))
-    
-    #return the 'cleansed' dataframe
-    return full_df
+    bootsamp = bootstrap(d,bootfunc=bootfunc,bootnum=nboot)
+
+    # sort the bootstrap sampled medians
+    bootsamp.sort()
+
+    # get indices corresponding to 68% confidence interval
+    ilower = int(0.16*nboot)
+    iupper = int(0.84*nboot)
+
+    # return the e.g. median at the 68% confidence interval
+    # need to subtract from median to get the actual errorbars
+    # like err_lower = actual_median - bootsamp[ilower]
+    # and err_upper = bootsamp[iupper] - actual_median
+    return bootsamp[ilower],bootsamp[iupper]
 
 
 ##############################################################
 # PERFORM IQR CLIPPING TO ELIMINATE OUTLIERS IN FEATURE SETS #
-##############################################################t
+##############################################################
 
 def iqr_clipping(df, features, k_clip=1.5):
     '''
@@ -76,30 +65,12 @@ def iqr_clipping(df, features, k_clip=1.5):
     return df[~outlier_mask]
 
 
-##################################
-# STANDARDIZING THE FEATURE DATA #
-##################################
-
-def standardize_data(df, features):
+def binomial_uncertainty(N_subset, N_total):
     '''
-    Standardize data features such that each column has a mean of 0 and a standard deviation of 1.
-    output: edited pandas dataframe with input columns standardized, scaler object
+    AIM: Calculate the binomial uncertainty for the fraction of a population that an extracted subset represents.
+         For example, the uncertainty on (# field galaxies)/(# total galaxies).
     '''
-    from sklearn.preprocessing import StandardScaler
+    f = N_subset / N_total
+    unc = np.sqrt((f * (1 - f)) / N_total)
     
-    df = df.copy()
-    
-    #create 'new' dataframe; add '_unscaled' to the feature column names
-    unscaled = df[features].add_suffix("_unscaled")
-
-    #initiate the scaler
-    scaler = StandardScaler()
-    
-    #apply the scaler to transform the features
-    df[features] = scaler.fit_transform(df[features])
-
-    #concatenate the transformed features with the unscaled features!
-    df = pd.concat([df, unscaled], axis=1)
-    
-    #ANNNNNND return
-    return df
+    return unc

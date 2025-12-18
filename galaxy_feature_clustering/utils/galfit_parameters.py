@@ -17,10 +17,13 @@
     #correct column names!
 #if the table is in data/ of the root directory, only need to specify 'data/filename.csv'
 #set SAVETABLE=True to save the feature_data table after creation! will default to DF_PATH
-#NOTE: IF SAVETABLE=TRUE, YOU MUST SET LOADTABLE=FALSE!
+#NOTE I: IF SAVETABLE=TRUE, YOU MUST SET LOADTABLE=FALSE!
+#NOTE II: there are two df paths because kmeans may use IQR-clipping. This fundamentally changes the density
+    #space of the data distribution, and thus non-trivially affects HDBSCAN.
 LOADTABLE=False
-DF_PATH='data/feature_data.csv'
 SAVETABLE=True
+KMEANS_DF_PATH='data/kmeans_feature_data.csv'
+HDBSCAN_DF_PATH='data/hdb_feature_data.csv'
 
 
 ##############################
@@ -42,13 +45,13 @@ PSCALE={'g':0.262,'r':0.262,'z':0.262,
 ################################
 
 #define the parameters!
-MIN_SAMPLES=10
-MIN_CLUSTER_SIZE=None
+MIN_SAMPLES=3
+MIN_CLUSTER_SIZE=80
 METRIC='canberra'
-SELECTION_METHOD='leaf'
+SELECTION_METHOD='eom'
 
 #optimize parameters flag! script will optimize HDBSCAN parameters via grid-search and a modified elbow method
-OPTIMIZE_HDB_PARAMS=True
+OPTIMIZE_HDB_PARAMS=False
 
 
 ###############################
@@ -147,7 +150,8 @@ class Params():
         self.COLUMNS = COLUMNS
         self.PSCALE = PSCALE
         self.LOADTABLE = LOADTABLE
-        self.DF_PATH = DF_PATH
+        self.KMEANS_DF_PATH = KMEANS_DF_PATH
+        self.HDBSCAN_DF_PATH = HDBSCAN_DF_PATH
         self.SAVETABLE = SAVETABLE
         self.MIN_CLUSTER_SIZE = MIN_CLUSTER_SIZE
         self.MIN_SAMPLES = MIN_SAMPLES

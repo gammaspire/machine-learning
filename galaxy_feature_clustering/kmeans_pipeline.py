@@ -29,14 +29,13 @@ import os
 import sys
 
 sys.path.insert(0,'utils')
+
+from data_utils import *
+from table_utils import *
 from conversion_utils import *
-from data_utils import trim_galfit_table, iqr_clipping, standardize_data
 
-from feature_utils import get_feature_names, add_average_re
+from feature_utils import get_feature_names
 from clustering_utils import find_optimal_k, run1_kmeans, pca_2d
-
-from stat_utils import *
-from init_table import *
 
 from galfit_parameters import Params
 params = Params()
@@ -65,26 +64,23 @@ def run_kmeans(colors=False, save_table=True):
     print('NOTE: be sure to edit galfit_parameters.py so parameters are to your liking!')
     
     #pull the full list of features which will be clustered
-    features = get_feature_names(colors=colors)
+    features = get_feature_names(params=params, colors=colors)
         
     print(f'USING THESE FEATURES: {features}')
       
     if params.LOADTABLE:
-        print(f'Reading feature data from {params.DF_PATH}...')
-        df_scaled = pd.read_csv(params.DF_PATH)
+        print(f'Reading feature data from {params.KMEANS_DF_PATH}...')
+        df_scaled = pd.read_csv(params.KMEANS_DF_PATH, na_values=['', ' '])
 
     else:
         #generate the dataframe
-        df_full = make_galfit_table(colors=colors)  
+        df_full = make_galfit_table(params, colors=colors)  
         
         #trim the table. remove the errors and unphysical data.
-        df_trimmed = trim_galfit_table(df_full)
+        df_trimmed = trim_galfit_table(df_full, params)
 
         #convert effective radii (px) to effective radii (kpc)
-        df_trimmed = get_kpc_columns(df_trimmed)
-
-        #calculate average g & r, W1 & W2 effective radii columns to df_trimmed (if those columns exist)
-        #df_trimmed = add_average_re(df_trimmed)   
+        df_trimmed = get_kpc_columns(df_trimmed, params)
         
         #remove pesky outliers that lie beyond 3-sigma of their respective features' means
         df_clipped = iqr_clipping(df_trimmed, features, k_clip=params.IQRCLIP)
@@ -94,8 +90,8 @@ def run_kmeans(colors=False, save_table=True):
     
     #write the table if SAVETABLE=True
     if params.SAVETABLE:
-        print(f'A copy of unscaled/scaled galaxy features was written to {params.DF_PATH}!')
-        df_scaled.to_csv(params.DF_PATH, index=False)
+        print(f'A copy of unscaled/scaled galaxy features was written to {params.KMEANS_DF_PATH}!')
+        df_scaled.to_csv(params.KMEANS_DF_PATH, index=False)
     
     #define k cluster variable
     K = params.K
@@ -106,23 +102,20 @@ def run_kmeans(colors=False, save_table=True):
     
     #perform k-means clustering on the full set of features, using the K defined above.
     feature_data = run1_kmeans(df_scaled, features, k=K)
-    
+        
+    #create a separate pandas dataframe comprising the median, uncertainty summary
+    summary_rows = create_median_table(feature_data, features)
+    cluster_summary = pd.DataFrame(summary_rows)
+        
     if save_table:
-        from stat_utils import create_median_table
-        
-        #create a separate pandas dataframe comprising the median, uncertainty summary
-        summary_rows = create_median_table(feature_data, features)
-        cluster_summary = pd.DataFrame(summary_rows)
-        
-        #save
-        loc = os.path.join(os.getcwd(), 'kmeans_features.csv')
+        loc = os.path.join(os.getcwd(), 'data/kmeans_median_features.csv')
         print(f"\n A summary of feature cluster median properties saved to {loc}:")
-        cluster_summary.to_csv("kmeans_features.csv", index=False)
-    
+        cluster_summary.to_csv(loc, index=False)
+
     if params.PLOT_MEDIANS:
         from plotting_utils import plot_group_features
         
-        #plot
+        #plot medians.
         plot_group_features(cluster_summary, layout_dict=params.LAYOUT_DICT)
     
     #if user indicated a preference for a corner plot in galfit_parameters.py, oblige them

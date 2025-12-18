@@ -1,11 +1,8 @@
-from galfit_parameters import Params
-params = Params()
-
 ################################################
 # PULL THE NAMES OF THE GALFIT FEATURE COLUMNS #
 ################################################
 
-def get_feature_names(colors=False):
+def get_feature_names(params, colors=False):
     '''
     AIM: return list of all feature names for specified parameters in, surprise, galfit_parameters.py
     '''
@@ -42,7 +39,6 @@ def make_label_dictionary():
     The list of possible features is written below. Add and subtract at will.
         * Remember that this list is meant to be all-encompassing! Set both arguments to True.
     '''
-    possible_features = get_feature_names(colors=True)
     
     feature_dict = {'CRE_W1-fixBA': '[W1] Effective Radius',
                     'CRE_W2': '[W2] Effective Radius',
@@ -76,19 +72,3 @@ def get_feature_label(colname, label_dict):
     """
     base = colname.replace('_unscaled', '')
     return label_dict.get(base, colname)
-
-
-############################################################
-# CALCULATING THE AVERAGE OF CERTAIN FEATURES (IF TOGGLED) #
-############################################################
-
-def add_average_re(data_table):
-    '''
-    AIM: append average g & r, W1 & W2 effective radii if the columns exist.
-    '''
-    if 'CRE_r' and 'CRE_g' in data_table.columns:
-        data_table['AVG_RE_gr'] = (data_table['CRE_g'] + data_table['CRE_r'])/2
-    if 'CRE_W1-fixBA' and 'CRE_W2' in data_table.columns:
-        data_table['AVG_RE_W1W2'] = (data_table['CRE_W1-fixBA'] + data_table['CRE_W2'])/2
-    
-    return data_table

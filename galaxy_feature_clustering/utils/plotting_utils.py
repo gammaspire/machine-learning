@@ -8,7 +8,7 @@ from feature_utils import make_label_dictionary, get_feature_label
 
 def marker_palette(feature_data):
     
-    shapes = ['o', 's', '^', '*', 'D', 'v', 'X', '<', 'h', '>']
+    shapes = ['<', 's', '^', '*', 'D', 'v', 'X', '<', 'h', '>']
         
     try:
         clusters = feature_data['Feature Cluster'].unique()
@@ -29,7 +29,7 @@ def marker_palette(feature_data):
     
     else:
         print(k, 'clusters')
-        cluster_colors = sns.color_palette('colorblind', len(feature_data['Feature Cluster'].unique()))
+        cluster_colors = sns.color_palette('husl', len(feature_data['Feature Cluster'].unique()))
         edge_colors = cluster_colors
     
     marker_shapes = [shapes[i % len(shapes)] for i in range(k)]
@@ -38,7 +38,6 @@ def marker_palette(feature_data):
         cluster_colors.insert(0, 'lightgray')
         edge_colors.insert(0, 'darkgray')
         marker_shapes.insert(0, 'o')
-        #data_labels.insert(0, 'Noise')
     
     return cluster_colors, edge_colors, marker_shapes
 
@@ -78,8 +77,8 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
         sns.scatterplot(data=feature_data, x=x, y=y, hue='Feature Cluster',
                         palette=color_map, alpha=0.7, edgecolor='w', linewidth=0.4)
     else:
-        ax = sns.scatterplot(x=x, y=y, data=feature_data[feature_data['Feature Cluster'] == -1], alpha=0.2,
-                            color='lightgray', edgecolor='w', linewidth=0.4)
+        ax = sns.scatterplot(x=x, y=y, data=feature_data[feature_data['Feature Cluster'] == -1], alpha=0.1,
+                            color='lightgray', edgecolor='w', linewidth=0.4, label='Noise')
         sns.scatterplot(x=x, y=y, data=feature_data[feature_data['Feature Cluster'] != -1], hue='Feature Cluster',
                         palette=color_map, alpha=0.7, edgecolor='w', linewidth=0.4, ax=ax)
     
@@ -191,7 +190,7 @@ def plot_env_fraction(feature_data, main_only=True):
     '''
     main_only --> plot cluster, rich group, poor group, filament, field environments only (no nuance)
     '''
-    from stat_utils import binomial_uncertainty
+    from data_utils import binomial_uncertainty
     
     #define feature group colors
     colors, edgecolors, marker_shapes = marker_palette(feature_data)
@@ -262,7 +261,7 @@ def plot_env_fraction(feature_data, main_only=True):
             #define label for legend, but only for the first environment (to avoid redundancies)
             label_ = None
             if i==0:
-                label_ = f'Feature Group {k_cluster}' if k_cluster != -1 else 'Noise Galaxies'
+                label_ = f'Feature Group {k_cluster}'
             
             #get the total number of galaxies in the feature cluster
             total = len(feature_data.loc[feature_data['Feature Cluster'] == k_cluster])
@@ -294,7 +293,7 @@ def plot_env_fraction(feature_data, main_only=True):
                         alpha=0.5, lw=2.5, zorder=2)  #do not need fmt='None' since we are only
                                                       #plotting one data point per iteration
 
-            print(f'Environment {i} cluster {k_cluster}: fraction {fraction:.3f}+/-{unc:.3f}')
+            #print(f'Environment {i} cluster {k_cluster}: fraction {fraction:.3f}+/-{unc:.3f}')
     
     #connect the dots using the stored values!
     for k_cluster in unique_clusters:
@@ -313,14 +312,17 @@ def plot_env_fraction(feature_data, main_only=True):
     plt.show()
 
 
-def plot_group_features(median_data, layout_dict=None):
+def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=None):
     '''
     AIM: create multiple subplots showing each group's features and their associated uncertainties (taken from bootstrapping)
     * median_data should comprise a dataframe table of feature medians and lower+upper uncertainties for each of the feature groups.
-    * layout_dict --> a python dictionary comprising the coordinates on a 3x3 grid where each feature 
-        will be plotted, as well as the column name of that feature in median_data
-            * If None, defaults to W1, W3, and g-band Re and nser; Size Ratio, NUV-r and W1-W3 colors
-    *
+    * layout_dict must be a python dictionary comprising the coordinates on a 3x3 grid where each feature 
+       will be plotted, as well as the column name of that feature in median_data
+        * If None, defaults to W1, W3, and g-band Re and nser; Size Ratio, NUV-r and W1-W3 colors
+    * nser_ylim should be a tuple of integers (ymin, ymax) dictating the axes limits for the Sersic index plots.
+        * If None, default is (0, 2)
+    * re_ylim should be a tuple of integers (ymin, ymax) dictating the axes limits for the effective radius plots.
+        * If None, default is (0, 5)
     '''
     
     from math import ceil
@@ -377,8 +379,8 @@ def plot_group_features(median_data, layout_dict=None):
     fig_width = ncol * subplot_width_inches
     fig_height = nrow * subplot_height_inches
     
-    #determine the unique cluster IDs (ignore noise)
-    unique_clusters = sorted(c for c in median_data['Feature Cluster'].unique() if c != -1)
+    #determine the unique cluster IDs
+    unique_clusters = sorted(median_data['Feature Cluster'].unique())
 
     #INITIATE
     fig, axes = plt.subplots(nrows=nrow, ncols=ncol, figsize=(fig_width, fig_height), constrained_layout=True)
@@ -410,11 +412,19 @@ def plot_group_features(median_data, layout_dict=None):
             err = ax.plot([k_cluster, k_cluster], [median-low_err, median+upp_err], 
                           color=edge_colors[k_cluster], zorder=1)
         
-        #assign row limits
+        #assign row y-axes limits
         if 'CN' in med_label:
-            ax.set_ylim(0,2)
+            ylims = nser_ylim
+            if nser_ylim is None:
+                ylims = (0,2)
         elif 'CRE' in med_label:
-            ax.set_ylim(0,5)
+            ylims = re_ylim
+            if re_ylim is None:
+                ylims = (0,5)
+        else:
+            ylims = ()  #no limits :-)
+        
+        ax.set_ylim(*ylims)  #cute way to put in a tuple for the ymin and ymax arguments!
         
         #set appropriate x-limits
         ax.set_xlim(min(unique_clusters)-0.5, max(unique_clusters)+0.5)

@@ -1,8 +1,12 @@
 import numpy as np
+
 from sklearn.cluster import KMeans
-from hdbscan import HDBSCAN
+from sklearn import metrics, preprocessing
 from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
+
+from hdbscan import HDBSCAN
+from hdbscan.validity import validity_index
 
 
 ##################################
@@ -54,7 +58,7 @@ def umap_2d(feature_data, features):
     X_clean = X[mask]
 
     #UMAP model (default params are fine for visualization, I guess.)
-    reducer = UMAP(n_components=2, n_neighbors=15, min_dist=0.1, metric='euclidean', random_state=42)
+    reducer = UMAP(n_components=2, n_neighbors=15, min_dist=0.1, random_state=42)
 
     #compute the 2D embedding (the 'low-dimensional' representation of the multi-dimensional manifold of parameters)
     embedding = reducer.fit_transform(X_clean)
@@ -112,8 +116,8 @@ def find_optimal_k(feature_data, features, min_k=2, max_k=10, plot=True):
 # HDBSCAN CLUSTERING FUNCTIONS #
 ################################
 
-def run1_hdbscan(feature_data, features, min_cluster_size=10, min_samples=None, 
-                 metric='euclidean', cluster_selection_method='leaf'):
+def run1_hdbscan(feature_data, features, min_cluster_size=20, min_samples=10, 
+                 metric='canberra', cluster_selection_method='leaf'):
     """
     Perform HDBSCAN clustering on the feature data.
     Adds a new 'Feature Cluster' column containing cluster labels.
@@ -138,85 +142,109 @@ def run1_hdbscan(feature_data, features, min_cluster_size=10, min_samples=None,
     return feature_data
 
 
+def dbcv_score(X, features):
+    return validity_index(X, features)
+
 def find_optimal_hdbparams(feature_data, 
                            features,
-                           min_cluster_sizes=[10,15,20,25,30],
-                           min_samples_list=[2,5,10,15,20,'same'],
-                           metrics=['euclidean', 'manhattan', 'canberra', 'braycurtis'],
+                           min_cluster_sizes=[20,30,40,50,60,100],
+                           min_samples_list=[10,15,20,30,50,60,100,'same'],
+                           metrics=['euclidean', 'manhattan', 'canberra'],
                            cluster_methods=['eom','leaf']):
     """
-    Full-grid HDBSCAN hyperparameter optimization using cluster stability
-    (persistence). Returns the hyperparameter tuple at the elbow where 
-    marginal improvement in stability is minimal.
-    """
-    from tqdm.notebook import tqdm   #the notebook version!
+    * Full-grid HDBSCAN hyperparameter optimization using DBCV.
+    * DBCV quantifies how well clusters are separated in terms of density
+    structure, explicitly accounting for noise points (-1 labels). Higher
+    values indicate more robust density separation; negative values indicate
+    weak or nonexistent cluster structure.
     
+    Diagnostic Notes:
+    * This function does NOT force a fixed number of clusters.
+    * It will naturally favor configurations with few or no clusters if the
+      feature space lacks strong density modes.
+    * A "best" solution may still have negative DBCV -- suggests parameters
+      are continuous rather than forming discernable pockets of local density!
+
+    """
+    from tqdm.notebook import tqdm
+    
+    #extract the feature matrix as an array
+    # HDBSCAN operates purely in feature space. no column labels.
     X = feature_data[features].values
     results = []
-    
-    #below is a rather unwieldy approach to sampling the entire space. cope. :-)
-    #at least I include a progress bar! ...right?
-    
-    #compute total number of iterations. needed for progress bar.
-    #represents the total number of possible hyperparameter combinations
-    total_iters = len(min_cluster_sizes) * len(min_samples_list) * len(metrics) * len(cluster_methods)
 
-    #create a single tqdm progress bar!
-    pbar = tqdm(total=total_iters, desc="HDBSCAN hyperparameter sweep")
+    #used for each progress bar "step." one step is one set of iterations completed, etc.
+    total_iters = (len(min_cluster_sizes) *
+                   len(min_samples_list) *
+                   len(metrics) *
+                   len(cluster_methods))
 
+    pbar = tqdm(total=total_iters, desc="HDBSCAN DBCV sweep")
+
+    #iterate over all hyperparameter combinations! 
+    #I included a progress bar so users (me) can monitor progress.
     for mcs in min_cluster_sizes:
         for ms in min_samples_list:
 
+            #enforce coupling if one of the min_samples elements is 'same'
             if ms == 'same':
                 ms_effective = mcs
             else:
                 ms_effective = ms
 
+            #configurations where min_samples is much smaller than
+            #min_cluster_size tend to produce excessive fragmentation
+            #(many small, unstable clusters).
+            #skipping these combinations reduces pathological solutions
+            #without restricting physically plausible ones. :]
+            if ms_effective < 0.5 * mcs:   #just some metric I conjured up. loljk it was suggested to me.
+                pbar.update(len(metrics) * len(cluster_methods))
+                continue
+
             for metric in metrics:
                 for csm in cluster_methods:
 
-                    try:
-                        clusterer = HDBSCAN(min_cluster_size=mcs, min_samples=ms_effective, metric=metric,
-                                            cluster_selection_method=csm).fit(X)
-                    except:
-                        clusterer = HDBSCAN(min_cluster_size=mcs, min_samples=ms_effective, metric=metric,
-                                            cluster_selection_method=csm, core_dist_n_jobs=1).fit(X)
-                    
-                    #skip degenerate solutions (noise = -1)
-                    if clusterer.labels_.max() < 0:
+                    clusterer = HDBSCAN(
+                        min_cluster_size=mcs,
+                        min_samples=ms_effective,
+                        metric=metric,
+                        cluster_selection_method=csm
+                    ).fit(X)
+
+                    labels = clusterer.labels_
+
+                    # skip degenerate solutions
+                    n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+                    if n_clusters < 2:
                         pbar.update(1)
                         continue
 
-                    #sum of cluster stabilities (persistence)
-                    #high persistence --> stable, robust cluster
-                    #low persistence --> spurious, flimsy cluster
-                    total_stability = clusterer.cluster_persistence_.sum()
+                    #the validity_index can fail for pathological or edge cases
+                    try:
+                        dbcv = validity_index(X, labels)
+                    except Exception:
+                        pbar.update(1)
+                        continue
 
-                    results.append((mcs, ms_effective, metric, csm, total_stability))
-
-                    #update progress bar
+                    results.append((mcs, ms_effective, metric, csm, dbcv))
                     pbar.update(1)
-    
-    #convert to np array for easy slicing
+
     results = np.array(results, dtype=object)
-    stabilities = np.array([r[4] for r in results], dtype=float)
 
-    #calculate the differences between consecutive stabilities
-    diffs = np.diff(stabilities)
-    
-    #the index where the diff is smallest -- that is, where there is minimal 
-    #improvement between consecutive stabilities
-    elbow_idx = np.argmin(diffs)
+    if len(results) == 0:
+        raise RuntimeError("No valid HDBSCAN configurations found.")
 
-    best = results[elbow_idx]
-    
+    #maximize DBCV
+    best_idx = np.argmax(results[:, 4].astype(float))
+    best = results[best_idx]
+
     print("############################")
-    print(" Best parameters at elbow:")
+    print(" Best parameters (DBCV):")
     print(f"   min_cluster_size         = {best[0]}")
     print(f"   min_samples              = {best[1]}")
     print(f"   metric                   = {best[2]}")
     print(f"   cluster_selection_method = {best[3]}")
-    print(f"   total stability          = {best[4]:.3f}")
+    print(f"   DBCV score               = {best[4]:.3f}")
     print("############################")
-    
+
     return best[0], best[1], best[2], best[3]

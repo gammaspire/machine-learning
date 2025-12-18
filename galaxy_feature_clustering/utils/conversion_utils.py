@@ -1,12 +1,11 @@
 import numpy as np
-from galfit_parameters import Params
-params = Params()
+
 
 ###############################
 # CONVERTING ARCSEC TO PIXELS #
 ###############################
 
-def px_to_arcsec(band, data):
+def px_to_arcsec(band, data, params):
     '''
     AIM: convert GALFIT effective radii from pixels to arcseconds
     * band must be a wavelength band (str) that is featured in PSCALE (grz, W1-4)
@@ -114,13 +113,13 @@ def nmaggies_to_mag(phot_array, extinction_array):
 #####################################################
 # CONVERTING PIXELS TO KPC FOR EFFECTIVE RADII DATA #
 #####################################################
-def get_kpc_columns(data_table):
+def get_kpc_columns(data_table, params):
     '''
     AIM: convert pixels to arcseconds, then arcseconds to kpc for every effective radius column.
     '''
     for band in params.BANDS:
         re_col = f'CRE_{band}'
-        re_arcsec = px_to_arcsec(band, data_table[re_col])
+        re_arcsec = px_to_arcsec(band, data_table[re_col], params)
         
         if 'Vcosmic' not in data_table.columns:
             print('Need Vcosmic column in order to proceed! Expect errors imminently...')

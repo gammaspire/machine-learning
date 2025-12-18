@@ -30,14 +30,16 @@ import os
 import sys
 
 sys.path.insert(0,'utils')
-from conversion_utils import *
-from data_utils import trim_galfit_table, standardize_data
 
-from feature_utils import get_feature_names, add_average_re
+from data_utils import *
+from table_utils import *
+from conversion_utils import *
+
+from feature_utils import get_feature_names
 from clustering_utils import find_optimal_hdbparams, run1_hdbscan, umap_2d
 
-from stat_utils import *
-from init_table import *
+from galfit_parameters import Params
+params = Params()
 
 import numpy as np
 np.seterr(all='ignore')  #ignore those pesky log10() errors
@@ -53,7 +55,7 @@ def run_hdbscan(colors=False, save_table=True):
     '''
     *If colors=True, the HDBSCAN features will include the following magnitude colors:
         *NUV - r
-        *W1 - W4
+        *W1 - W3
     *If save_table=True, unscaled median feature data and their uncertainties will be saved as a .csv
         *save loc will be the same as the location of galfit_kmeans.py
     *Note that these magnitudes originate from extinction-corrected photometric fluxes
@@ -63,40 +65,40 @@ def run_hdbscan(colors=False, save_table=True):
     print('NOTE: be sure to edit galfit_parameters.py so parameters are to your liking!')
     
     #pull the full list of features which will be clustered
-    features = get_feature_names(colors=colors)
+    features = get_feature_names(params=params, colors=colors)
     
     print(f'USING THESE FEATURES: {features}')
     
     if params.LOADTABLE:
-        print(f'Reading feature data from {params.DF_PATH}...')
-        df_scaled = pd.read_csv(params.DF_PATH)
+        print(f'Reading feature data from {params.HDBSCAN_DF_PATH}...')
+        df_scaled = pd.read_csv(params.HDBSCAN_DF_PATH)
     
     else:
-        
         #generate the dataframe
-        df_full = make_galfit_table(colors=colors)       
+        df_full = make_galfit_table(params, colors=colors)       
 
         #trim the table. remove the errors and unphysical data
-        df_trimmed = trim_galfit_table(df_full)
+        df_trimmed = trim_galfit_table(df_full, params)
 
-        df_trimmed = get_kpc_columns(df_trimmed)
-
-        #calculate average g & r, W1 & W2 effective radii columns to df_trimmed (if those columns exist)
-        df_trimmed = add_average_re(df_trimmed)   
+        #convert effective radii (px) to effective radii (kpc)
+        df_trimmed = get_kpc_columns(df_trimmed, params) 
 
         #replace inf, -inf with NaN
         df_trimmed = df_trimmed.replace([np.inf, -np.inf], np.nan)
 
+        #replace any blanks with np.nan
+        df_trimmed = df_trimmed.replace(r'^\s*$', np.nan, regex=True)
+        
         #drop rows with ANY NaNs in the feature columns
-        df_trimmed = df_trimmed.dropna(subset=features)
+        df_trimmed = df_trimmed.dropna(subset=features+['NUV_r']+['W1_W3'])
 
         #scale the feature data.
         df_scaled = standardize_data(df_trimmed, features)
     
     #write the table if SAVETABLE=True
     if params.SAVETABLE:
-        print(f'A copy of the scaled galaxy features was written to {params.DF_PATH}!')
-        df_scaled.to_csv(params.DF_PATH, index=False)
+        print(f'A copy of the scaled galaxy features was written to {params.HDBSCAN_DF_PATH}!')
+        df_scaled.to_csv(params.HDBSCAN_DF_PATH, index=False)
     
     #read the HDBSCAN parameters from galfit_parameters.py, if defined.
     MIN_CLUSTER_SIZE = params.MIN_CLUSTER_SIZE
@@ -106,7 +108,7 @@ def run_hdbscan(colors=False, save_table=True):
     
     #if user set this parameter to True, extract optimal values using a modified elbow method
     if params.OPTIMIZE_HDB_PARAMS:
-        print('Either MIN_CLUSTER_SIZE or MIN_SAMPLE is set to None! Calculating optimal HDBSCAN parameters...')
+        print('Calculating optimal HDBSCAN parameters...')
         MIN_CLUSTER_SIZE, MIN_SAMPLES, METRIC, SELECTION_METHOD = find_optimal_hdbparams(df_scaled, features)
     
     #perform HDBSCAN on the full set of features, using the parameters defined above.
@@ -118,25 +120,25 @@ def run_hdbscan(colors=False, save_table=True):
     #NOISE != CLUSTER
     clean_data = feature_data[feature_data['Feature Cluster'] != -1].copy()  
         
-    if save_table:
-        from stat_utils import create_median_table
+    #create a separate pandas dataframe comprising the median, uncertainty summary
+    #use clean data here
+    summary_rows = create_median_table(clean_data, features)
+    cluster_summary = pd.DataFrame(summary_rows)
+        
+    if save_table:        
+        loc = os.path.join(os.getcwd(), 'data/hdbscan_median_features.csv')
+        print(f"\n A summary of feature cluster median properties saved to {loc}:")
+        cluster_summary.to_csv(loc, index=False)
+    
+    if params.PLOT_MEDIANS:
         from plotting_utils import plot_group_features
         
-        #create a separate pandas dataframe comprising the median, uncertainty summary
-        #use clean data here
-        summary_rows = create_median_table(clean_data, features)
-        cluster_summary = pd.DataFrame(summary_rows)
-        
-        #create subplots showing each group's features and their uncertainties (from bootstrapping)
-        plot_group_features(cluster_summary)
-        
-        #save
-        loc = os.path.join(os.getcwd(), 'hdbscan_features.csv')
-        print(f"\n A summary of feature cluster median properties saved to {loc}:")
-        cluster_summary.to_csv("hdbscan_features.csv", index=False)
+        #plot medians.
+        plot_group_features(cluster_summary, layout_dict=params.LAYOUT_DICT)
+
     
     #if user indicated a preference for a corner plot in galfit_parameters.py, oblige them
-    #must precede PCA, so that the PCA components are not included in the analysis
+    #must precede UMAP, so that the UMAP components are not included in the analysis
     if params.PLOT_CORNER:
         from plotting_utils import plot_corner
         
@@ -156,19 +158,18 @@ def run_hdbscan(colors=False, save_table=True):
             feature_data_umap = umap_2d(feature_data, features)
             
         #plort.
-        plot_clusters(feature_data_umap, x=params.X, y=params.Y, 
+        plot_clusters(feature_data_umap[feature_data_umap['Feature Cluster']!=-1], x=params.X, y=params.Y, 
                       PCA=params.PCA_FOR_PLOTTING, UMAP=params.UMAP_FOR_PLOTTING)
     
     #self-explanatory. uninvolved. demure.
     if params.PLOT_ENV_FRACTION:
         from plotting_utils import plot_env_fraction
-        #use all data here! do not want to remove the noise from analysis!
-        plot_env_fraction(feature_data, main_only=False)
+        plot_env_fraction(clean_data, main_only=True) #no noise data, pls.
     
     #also self-explanatory. collected. uninhibited.
     if params.PLOT_SFRMSTAR:
         from plotting_utils import plot_sfrmstar
-        plot_sfrmstar(clean_data)   #no light gray points allowed!
+        plot_sfrmstar(clean_data)   #no light gray points allowed.
     
     #return the data for further analysis, if needed.
     return feature_data
