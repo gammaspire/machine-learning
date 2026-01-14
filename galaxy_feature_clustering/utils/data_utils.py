@@ -8,12 +8,12 @@ import numpy as np
 # MODIFIED BOOTSTRAP FUNCTION, COURTESY OF RFINN  #
 ###################################################
 
-def get_bootstrap_confint(d,bootfunc=np.median,nboot=2000):
+def get_bootstrap_confint(d, bootfunc=np.median, nboot=2000):
     
     from astropy.stats import bootstrap
     
     '''
-    AIM: Calculate (lower, upper) bootstrap 68% confidence interval for any 
+    AIM: Calculate (lower, upper) bootstrap 68% confidence intervals for any 
          statistic bootfunc applied to data d.
     
     ASTROPY.STATS.BOOTSTRAP
@@ -65,6 +65,10 @@ def iqr_clipping(df, features, k_clip=1.5):
     return df[~outlier_mask]
 
 
+##########################################################
+# CALCULATE BINOMIAL UNCERTAINTIES FOR ENVIRONMENT PLOT  #
+##########################################################
+
 def binomial_uncertainty(N_subset, N_total):
     '''
     AIM: Calculate the binomial uncertainty for the fraction of a population that an extracted subset represents.
@@ -74,3 +78,72 @@ def binomial_uncertainty(N_subset, N_total):
     unc = np.sqrt((f * (1 - f)) / N_total)
     
     return unc
+
+
+#########################################
+# GET SFRvMSTAR MAIN SEQUENCE EQUATION  #
+#########################################
+
+def get_ms_line(mstar_array, sfr_array):
+    '''
+    AIM: get the slope (m) and y-intercept (b) for the linear fit to SFR vs. Mstar data
+    Note that I apply a log(sSFR) > -11.5 cut first, "as galaxies below this limit are those 
+    whose UV and IR emission are likely dominated by sources not associated with star formation 
+    (Salim+2018)" -- Conger+2025
+    '''
+    
+    #create the Salim+2018 sSFR cut
+    logsSFR = sfr_array - mstar_array
+    salim_flag = (logsSFR > -11.5)
+    
+    m, b = np.polyfit(mstar_array[salim_flag], sfr_array[salim_flag], deg=1)
+    
+    return m, b
+
+
+########################################################
+# GET SFRvMSTAR MAIN SEQUENCE PERPENDICULAR DISTANCES  #
+########################################################
+
+def get_ms_distance(mstar_array, sfr_array, m, b):
+    '''
+    AIM: calculate the perpendicular distance (in SFR vs. Mstar space) between array elements and the linear fit.
+    
+    Distance = (|A*x1 + B*y1 + C|) / (sqrt(A**2 + B**2))
+    This originates from the standard form of a line: Ax + By = C (contrast with y = mx + b)
+        * mapping onto y=mx+b:
+            * Ax + By - C = y - mx - b
+            * --> [A = -m, B = 1, C = b]
+    
+    OUTPUT: array of perpendicular distances from point to main sequence
+    '''
+    x1 = mstar
+    y1 = sfr
+    A = (-1)*(m)
+    B = 1
+    C = b
+    
+    distance_numerator = np.abs(A*x1 + B*y1 + C)
+    distance_denominator = np.sqrt(A**2 + B**2)
+    ms_distance = distance_numerator / distance_denominator
+    
+    return ms_distance
+        
+    
+##########################################
+# GET log(SFR) OFFSET FROM MAIN SEQUENCE #
+##########################################
+
+def get_delta_logsfr(mstar_array, sfr_array, m, b):
+    '''
+    AIM: calculate /\log(SFR) array for the input galaxy data. Treat log(Mstar) as fixed.
+    '''
+    
+    #first calculate the predicted logSFR at the given logMstar value
+    logSFR_MS = m * mstar_array + b
+    
+    #/\log(SFR) = logSFR_data - logSFR_MS
+    delta_sfr = sfr_array - logSFR_MS
+    
+    return delta_sfr
+    

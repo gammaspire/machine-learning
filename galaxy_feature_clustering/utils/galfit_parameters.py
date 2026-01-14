@@ -59,7 +59,6 @@ OPTIMIZE_HDB_PARAMS=False
 ###############################
 
 #The desired k limit for clipping outliers from the data distribution via interquartile ranges. 
-#Set IQRCLIP=None to include the full range of parameters.
 #For reference:
     #IQRCLIP=1.5 has a Gaussian equivalent of ~3sigma
     #IQRCLIP=2.5 has a Gaussian equivalent of ~4sigma
@@ -74,7 +73,7 @@ OPTIMIZE_HDB_PARAMS=False
         #say I set IQRCLIP = 1.5 (standard Tukey method)
         #take original Q1 and Q3 and *move* them outward such that the new IQR is 1.5x its original size
         #any points not in this bloated IQR are outliers. goodbye outliers.
-        
+#set to None to include full range of parameters.
 IQRCLIP=1.5
 
 #number of clusters to use for kmeans

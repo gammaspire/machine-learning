@@ -141,9 +141,14 @@ def run_kmeans(colors=False, save_table=True):
     
     #self-explanatory. uninvolved. demure.
     if params.PLOT_ENV_FRACTION:
+        #from plotting_utils import plot_env_fraction, plot_env_composition
+        #plot_env_fraction(feature_data, main_only=False)
+        #plot_env_composition(feature_data, main_only=False)
+        
         from plotting_utils import plot_env_fraction
-        plot_env_fraction(feature_data, main_only=False)
-    
+        plot_env_fraction(feature_data, main_only=False, envfrac=True, envcomp=False)
+        plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=True)
+        
     #also self-explanatory. collected. uninhibited.
     if params.PLOT_SFRMSTAR:
         from plotting_utils import plot_sfrmstar

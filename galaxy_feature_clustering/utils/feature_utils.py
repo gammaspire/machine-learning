@@ -72,3 +72,65 @@ def get_feature_label(colname, label_dict):
     """
     base = colname.replace('_unscaled', '')
     return label_dict.get(base, colname)
+
+
+####################################
+# DICTIONARY FOR ENVIRONMENT FLAGS #
+####################################
+
+def make_env_defs(feature_data, main_only=True):
+    '''
+    AIM: create (environment name : bool flags) dictionary to faciliate feature group plotting!
+    
+    feature_data:
+        pandas dataframe with environment flags!
+    
+    main_only:
+        If True, restricts to the five primary environments.
+    '''
+    if 'pure_field' not in feature_data.columns:
+        print('Uh oh. Make sure you have the environment flags in the input dataframe!')
+        return
+    
+    if main_only:
+        env_defs = {'Cluster':     feature_data['cluster_member'],
+                    'Rich Group':  feature_data['rich_group_memb'],
+                    'Poor Group':  feature_data['poor_group_memb'],
+                    'Filament':    feature_data['filament_member'],
+                    'Pure Field':  feature_data['pure_field']}
+        return env_defs
+
+    env_defs = {'Pure Cluster':              (feature_data['cluster_member']) & \
+                                             (~feature_data['filament_member']),
+
+               #'All Cluster':                (feature_data['cluster_member']),
+
+               'Filament\n&\nCluster':       (feature_data['cluster_member']) & \
+                                             (feature_data['filament_member']) & \
+                                             (~feature_data['rich_group_memb']) & \
+                                             (~feature_data['poor_group_memb']),
+
+               'Filament\n&\nRich Group':    (feature_data['rich_group_memb']) & \
+                                             (feature_data['filament_member']),
+
+               'Pure Rich \n Group':         (feature_data['rich_group_memb']) & \
+                                             (~feature_data['filament_member']),
+
+               #'All Filament\n(PG+RG+CLUS)': (feature_data['filament_member']),
+
+               'Filament\n&\nPoor Group':    (feature_data['filament_member']) & \
+                                             (feature_data['poor_group_memb']) & \
+                                             (~feature_data['rich_group_memb']),
+
+               'Pure Poor \n Group':         (feature_data['poor_group_memb']) & \
+                                             (~feature_data['filament_member']),
+
+               'Pure Filament':              (feature_data['filament_member']) & \
+                                             (~feature_data['cluster_member']) & \
+                                             (~feature_data['poor_group_memb']) & \
+                                             (~feature_data['rich_group_memb']),
+
+               'Pure Field':                 (feature_data['pure_field'])}
+
+    return env_defs
+    

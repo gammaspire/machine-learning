@@ -3,8 +3,13 @@ import matplotlib.ticker as mticker
 import seaborn as sns
 import numpy as np
 
-from feature_utils import make_label_dictionary, get_feature_label
+from feature_utils import make_label_dictionary, get_feature_label, make_env_defs
+from data_utils import get_bootstrap_confint
 
+
+######################################
+# Defining a Consistent Plot Palette #
+######################################
 
 def marker_palette(feature_data):
     
@@ -42,6 +47,10 @@ def marker_palette(feature_data):
     return cluster_colors, edge_colors, marker_shapes
 
 
+#####################################
+# Plotting Silhouette Method Output #
+#####################################
+
 def plot_silhouette(K, silhouettes):
     
     plt.figure(figsize=(8,6))
@@ -51,7 +60,11 @@ def plot_silhouette(K, silhouettes):
     plt.tight_layout()
     plt.show()
     
-    
+
+##########################################################
+# Visualizing the Feature Groups in 2D PCA or UMAP Space #
+##########################################################
+
 def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     
     #pull the colors...
@@ -89,6 +102,10 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     plt.tight_layout()
     plt.show()
 
+
+###########################
+# Plotting PCA Components #
+###########################
 
 def plot_pca_components(feature_data, features, pca, cmap_name='tab20'):
     '''
@@ -142,6 +159,279 @@ def plot_pca_components(feature_data, features, pca, cmap_name='tab20'):
     plt.show()
 
 
+##############################################
+# Plotting Feature Group Physical Properties #
+############################################## 
+    
+def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=False):
+    '''
+    INTERPRETATIONS:
+        if envcomp=True:
+            * "Given a galaxy in environment E, what is the probability it belongs
+              to feature group k?"
+            * That is, what fractions of the environment belong to what FG?
+            * Each point is [FG_in_env / total_env]
+        If envfrac=True:
+             * "Given a galaxy in feature group k, what is the probability it belongs
+               to X environment?"
+             * That is, what fractions of the FG belong to what environment?
+             * Each point is [env_in_FG / total_FG]
+    
+    envcomp   : bool
+        * if True, plot FG fractions in each environment
+        * default is False
+    envfrac   : bool
+        * if True, plot environment fractions in each FG
+        * default is False
+    main_only : bool
+        * if True, plot cluster, rich group, poor group, filament, field environments only (no nuance)
+        * if False, plot all orthogonal environments -- pure field/cluster/rg/pg/filament, 
+                                                      rg+fil, pg+fil, clus+fil
+    '''        
+    if (not envcomp and not envfrac) or (envcomp and envfrac):
+        print('plot_env_frac() -- either choose envcomp or envfrac. Do not set both True or both False.')
+        return
+    
+    from feature_utils import make_env_defs
+    
+    #define feature group colors
+    colors, edgecolors, marker_shapes = marker_palette(feature_data)
+
+    env_defs = make_env_defs(feature_data, main_only=main_only)
+    env_names = list(env_defs.keys())
+    
+    #create array of k values
+    try:
+        unique_clusters = sorted(np.unique(feature_data['Feature Cluster']))
+    except:
+        print('"Feature Cluster" column not found. Please run k-means or HDBSCAN clustering before continuing!')
+        return
+    
+    #create dictionaries!
+    color_map  = {c: colors[i]        for i, c in enumerate(unique_clusters)}
+    edge_map   = {c: edgecolors[i]    for i, c in enumerate(unique_clusters)}
+    shape_map  = {c: marker_shapes[i] for i, c in enumerate(unique_clusters)}
+    
+    #create indices for these galaxies (for the x-axis)
+    index = np.arange(1,len(env_names)+1,1)
+    
+    #initialize the figure
+    fig, ax = plt.subplots(1,1,figsize=(10,6))
+    
+    #create storage variables so that I can connect the dots when the loop finishes. yay dots.
+    line_x = {k_cluster: [] for k_cluster in unique_clusters}
+    line_y = {k_cluster: [] for k_cluster in unique_clusters}
+    err_y_low = {k_cluster: [] for k_cluster in unique_clusters}
+    err_y_up = {k_cluster: [] for k_cluster in unique_clusters}
+    
+    #for every environment, plot its corresponding fraction and uncertainty in every feature group
+    #OR
+    #for every environment, plot each constituent feature group's fraction and uncertainty
+    for i, (env_name, env_flag) in enumerate(env_defs.items()):
+        
+        #pull the env flag from feature_data
+        env = feature_data[env_flag]
+        
+        for k_cluster in unique_clusters:
+            
+            #total galaxies in the feature cluster (will need for plotting as well!)
+            feature_group = feature_data.loc[feature_data['Feature Cluster'] == k_cluster]
+            Ngal_feature_group = len(feature_group)
+            
+            ###########
+            # ENVFRAC #
+            ###########
+            
+            if envfrac:
+                #get the total number of galaxies in the feature cluster
+                total = Ngal_feature_group
+                
+                #of the galaxies in the feature cluster, how many belong to x environment?
+                #creates an array of 0s and 1s; 1=part of subset, 0=not part of subset
+                #the average of this, in fact, IS the subset / total fraction!
+                subset_data = (env_flag[feature_data['Feature Cluster'] == k_cluster].values).astype(int)
+                
+                title_ = 'Environment Distribution Within each Feature Group'
+                ylim1 = 0
+                ylim2 = None
+
+            ###########
+            # ENVCOMP #
+            ###########
+            
+            #otherwise, get total number galaxies in the environment
+            if envcomp:
+                total = len(env)
+                
+                #of galaxies_in_env, how many are in feature group k?
+                #creates an array of 0s and 1s; 1=part of subset, 0=not part of subset
+                #the average of this, in fact, IS the subset / total fraction!
+                subset_data = (env['Feature Cluster'].values == k_cluster).astype(int)
+                
+                title_ = 'Feature Group Composition Within each Envirionment'
+                ylim1 = 0
+                ylim2 = 1
+            
+            ########
+            # BOTH #
+            ########
+            
+            #if total = 0...no use in including the data.
+            if total == 0:
+                line_x[k_cluster].append(index[i])
+                line_y[k_cluster].append(0)
+                err_y_low[k_cluster].append(0)
+                err_y_up[k_cluster].append(0)
+                continue
+            
+            #calculate fraction and bootstrap uncertainty
+            #the uncertainty is on the mean of the data. remember that mean = subset/total when we convert
+            #the subset array to 0s and 1s!
+            fraction = np.mean(subset_data)
+            ci_low, ci_up = get_bootstrap_confint(subset_data, bootfunc=np.mean)
+            
+            #convert bounds to asymmetric errorbars around the point
+            unc_low = max(0.0, fraction - ci_low)
+            unc_up  = max(0.0, ci_up - fraction)
+            
+            print(f'test one: {unc_low} {unc_up}')
+            
+            #store the line variables!
+            line_x[k_cluster].append(index[i])
+            line_y[k_cluster].append(fraction)
+            err_y_low[k_cluster].append(unc_low)
+            err_y_up[k_cluster].append(unc_up)
+            
+            #define label for legend, but only for the first point of each FG (to avoid redundancies)
+            label_ = None if i!=0 else f'Feature Group {k_cluster} (Ngal={Ngal_feature_group})'
+            
+            ax.scatter(index[i], fraction,  color=color_map[k_cluster], label=label_, s=90, 
+                       edgecolor=edge_map[k_cluster], marker=shape_map[k_cluster], zorder=3)
+            
+            #plot the asymmetric error bars
+            err = ax.plot([index[i], index[i]], [fraction-unc_low, fraction+unc_up], 
+                          color=color_map[k_cluster], alpha=0.5, lw=2.5, zorder=2)
+
+    for k_cluster in unique_clusters:
+        
+        #connect the dots using the stored values
+        ax.plot(line_x[k_cluster], line_y[k_cluster], color=edge_map[k_cluster], 
+                linewidth=2.2, alpha=0.3, zorder=1)
+        
+        #create shaded regions between uncertainties, also using stored values!
+        ax.fill_between(line_x[k_cluster], 
+                        np.asarray(line_y[k_cluster])-np.asarray(err_y_low[k_cluster]), 
+                        np.asarray(line_y[k_cluster])+np.asarray(err_y_up[k_cluster]), 
+                        color=color_map[k_cluster], alpha=0.2, zorder=0)
+    
+    ax.set_xticks(index, env_names, rotation=45, fontsize=15)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.grid(alpha=0.2)
+    
+    ax.set_ylim(ylim1, ylim2)
+    ax.set_ylabel('Fraction of Galaxies',fontsize=17)
+
+    ax.set_title(title_)
+    
+    ax.legend(loc='upper left')
+    
+    plt.show()
+
+
+def plot_env_stacked_hist(feature_data, main_only=False):
+    '''
+    AIM:
+        For each environment, plot the fractional composition of feature groups as a stacked histogram.
+
+    INTERPRETATION:
+        "Given a galaxy in environment E, what is the probability it belongs
+         to feature group k?"
+
+    main_only:
+        If True, restricts to the five primary environments.
+    '''
+
+    #color/marker bookkeeping
+    colors, edgecolors, marker_shapes = marker_palette(feature_data)
+
+    #define environments using boolean masks
+    env_defs = make_env_defs(feature_data, main_only=main_only)
+        
+    #isolate the name strings
+    env_names = list(env_defs.keys())
+
+    #identify feature groups (ignore noise if present)
+    feature_groups = sorted(c for c in feature_data['Feature Cluster'].unique() if c != -1)
+
+    #number of environments and feature groups!
+    n_env = len(env_names)
+    n_fg  = len(feature_groups)
+
+    #storage array for fractions...
+    fractions = np.zeros((n_env, n_fg))
+
+    #now compute the fractions
+    for i, (env_name, env_flag) in enumerate(env_defs.items()):
+
+        #find subset of galaxies belonging to environment E
+        env_data = feature_data[env_flag]
+        total = len(env_data)   #total galaxies in environment E
+
+        for j, k in enumerate(feature_groups):
+
+            #number of galaxies in environment E AND feature group k
+            subset = np.sum(env_data['Feature Cluster'] == k)
+
+            #avoid division by zero (empty environments)
+            if total == 0:
+                fractions[i, j] = 0.0
+                continue
+
+            #fraction
+            fractions[i, j] = subset / total   #ith environment (row), jth feature group (column)
+
+    #PLOTTING ZEIT
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    #tracks the bottom of each stacked bar. this prevents the components from overlapping!
+    bottom = np.zeros(n_env)
+
+    #x locations for environments
+    x = np.arange(n_env)
+
+    #draw stacked bars
+    for j, k in enumerate(feature_groups):
+
+        ax.bar( x,
+                fractions[:, j],
+                bottom=bottom,
+                color=colors[j],
+                edgecolor=edgecolors[j],
+                label=f'Feature Group {k}',
+                zorder=2)
+
+        #update bottom for next feature group
+        bottom += fractions[:, j]
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(env_names, rotation=45, fontsize=13)
+    ax.set_ylabel('Fraction of Galaxies', fontsize=15)
+    ax.set_ylim(0, 1)
+
+    ax.set_title('Feature Group Composition by Environment', fontsize=16)
+
+    ax.grid(axis='y', alpha=0.25)
+    #ax.legend(title='Feature Group', bbox_to_anchor=(1.02, 1),
+    #          loc='upper left', frameon=False)
+
+    plt.tight_layout()
+    plt.show()
+    
+
+##############################################
+# Plotting Feature Group Physical Properties #
+############################################## 
+
 def plot_corner(feature_data, features=None):
     #suppress those WARNINGS PLS
     import warnings
@@ -184,138 +474,13 @@ def plot_corner(feature_data, features=None):
     g._legend.remove()
     #g.fig.suptitle('Feature Clusters in Physical Space', y=1.02)
     plt.show()
-    
-    
-def plot_env_fraction(feature_data, main_only=True):
-    '''
-    main_only --> plot cluster, rich group, poor group, filament, field environments only (no nuance)
-    '''
-    from data_utils import binomial_uncertainty
-    
-    #define feature group colors
-    colors, edgecolors, marker_shapes = marker_palette(feature_data)
 
-    #unpack the flags
-    clusflag = feature_data['cluster_member']
-    rgflag = feature_data['rich_group_memb']
-    pgflag = feature_data['poor_group_memb']
-    filflag = feature_data['filament_member']
-    fieldflag = feature_data['pure_field']
     
-    #defining more nuanced flags
-    clus_only = (clusflag) & (~filflag)
-    fil_clus = (filflag) & (clusflag) & (~rgflag) & (~pgflag)
-    fil_only = (filflag) & (~clusflag) & (~rgflag) & (~pgflag)
-    rg_only = (rgflag) & (~filflag)
-    pg_only = (pgflag) & (~filflag)
-    
-    #create array of k values
-    try:
-        k = np.unique(feature_data['Feature Cluster'])
-    except:
-        print('"Feature Cluster" column not found. Please run k-means or HDBSCAN clustering before continuing!')
-        return
-    
-    #create dictionaries!
-    unique_clusters = sorted(k)
-    color_map  = {c: colors[i]        for i, c in enumerate(unique_clusters)}
-    edge_map   = {c: edgecolors[i]    for i, c in enumerate(unique_clusters)}
-    shape_map  = {c: marker_shapes[i] for i, c in enumerate(unique_clusters)}
-    
-    #set up the flags, data, indices, x-axis environment names
-    env_names = np.array(['Pure Cluster',
-                 'All Cluster', 
-                 'Filament\n&\nCluster',
-                 'Filament\n&\nRich Group',
-                 'Pure Rich \n Group',
-                 'All Filament\n(PG+RG+CLUS)',
-                 'Filament \n & \n Poor Group',
-                 'Pure Poor \n Group',
-                 'Pure Filament',
-                 'Pure Field'])
-        
-    #place the flags in a neat and tidy list
-    flags = [clus_only, clusflag, fil_clus, rgflag, rg_only, filflag, pgflag, pg_only, fil_only, fieldflag]
-    
-    #if the user only wants the main five environments, trim the lists accordingly
-    if main_only:
-        flags=[clusflag, rgflag, pgflag, filflag, fieldflag]
-        env_names = ['Cluster', 'Rich Group', 'Poor Group', 'Filament', 'Pure Field']
-    
-    #place the environment data in a neat and tidy list
-    env_galaxies = [feature_data[flag] for flag in flags]
-    index = np.arange(1,len(env_names)+1,1)
-    
-    #initialize the figure
-    fig, ax = plt.subplots(1,1,figsize=(10,6))
-    
-    #create storage variables so that I can connect the dots when the loop finishes.
-    line_x = {k_cluster: [] for k_cluster in k}
-    line_y = {k_cluster: [] for k_cluster in k}
-    
-    #for every environment, plot its corresponding fraction and uncertainty for every feature group
-    for i, env in enumerate(env_galaxies):
-        
-        for k_cluster in k:
-            
-            #define label for legend, but only for the first environment (to avoid redundancies)
-            label_ = None
-            if i==0:
-                label_ = f'Feature Group {k_cluster}'
-            
-            #get the total number of galaxies in the feature cluster
-            total = len(feature_data.loc[feature_data['Feature Cluster'] == k_cluster])
-            
-            #pull the galaxies in env that are also in k_cluster
-            feature_members = env.loc[env['Feature Cluster'] == k_cluster]
-            subset = len(feature_members)   #fraction of env galaxies in k_cluster
-            
-            #calculate the fraction of feature group galaxies in a given environment
-            #the subset is the number of env environment galaxies in the feature group
-            #the total is ALL of the galaxies in the feature group
-                #effectively, this fraction is a probability of plucking a galaxy in X environment 
-                #if it belongs to k feature group
-            
-            #if total = 0...no use in including the data.
-            if total == 0:
-                continue
-
-            fraction = subset / total
-            unc = binomial_uncertainty(subset, total)
-            
-            #store the line variables!
-            line_x[k_cluster].append(index[i])
-            line_y[k_cluster].append(fraction)
-            
-            ax.scatter(index[i], fraction,  color=color_map[k_cluster], label=label_, s=80, 
-                       edgecolor=edge_map[k_cluster], marker=shape_map[k_cluster], zorder=3)
-            ax.errorbar(index[i] ,fraction, yerr=unc, color=color_map[k_cluster],
-                        alpha=0.5, lw=2.5, zorder=2)  #do not need fmt='None' since we are only
-                                                      #plotting one data point per iteration
-
-            #print(f'Environment {i} cluster {k_cluster}: fraction {fraction:.3f}+/-{unc:.3f}')
-    
-    #connect the dots using the stored values!
-    for k_cluster in unique_clusters:
-        ax.plot(line_x[k_cluster], line_y[k_cluster], color=color_map[k_cluster], 
-                linewidth=2.2, alpha=0.8, zorder=1)
-    
-    ax.set_xticks(index, env_names, rotation=45, fontsize=15)
-    ax.tick_params(axis='both', which='major', labelsize=12)
-    ax.grid(alpha=0.2)
-    ax.set_ylabel('Fraction of Galaxies',fontsize=17)
-
-    ax.set_title('Fraction of Galaxy Environments per Feature Group')
-    
-    ax.legend(loc='upper left')
-    
-    plt.show()
-
-
 def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=None):
     '''
     AIM: create multiple subplots showing each group's features and their associated uncertainties (taken from bootstrapping)
-    * median_data should comprise a dataframe table of feature medians and lower+upper uncertainties for each of the feature groups.
+    * median_data should comprise a dataframe table of feature medians and lower+upper uncertainties for each 
+      of the feature groups.
     * layout_dict must be a python dictionary comprising the coordinates on a 3x3 grid where each feature 
        will be plotted, as well as the column name of that feature in median_data
         * If None, defaults to W1, W3, and g-band Re and nser; Size Ratio, NUV-r and W1-W3 colors
@@ -440,25 +605,42 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
     return
 
 
+def feature_rainclouds():
+    return
 
+
+
+
+
+
+########################################
+# Plotting Feature Groups SFR v. Mstar #
+########################################
 
 def plot_sfrmstar(feature_data):
-    
-    #need logsfr, logmstar, and Feature Cluster columns!
-    if 'logsfr' not in feature_data.columns or 'logmstar' not in feature_data.columns:
-        return 'Need "logmstar" and "logsfr" columns to use this function!'
+    '''
+    AIM: plot feature groups on [delta_logSFR] vs. [logMstar] axes.
+    '''
+    #need delta_logsfr, logmstar, and Feature Cluster columns!
+    if 'delta_logsfr' not in feature_data.columns or 'logmstar' not in feature_data.columns:
+        print('Need "logmstar" and "delta_logsfr" columns to use this function!')
+        return
     if 'Feature Cluster' not in feature_data.columns:
-        return 'Need "Feature Cluster" column to use this function!'
+        print('Need "Feature Cluster" column to use this function!')
+        return
     
+    #get palette colors
     palette, _, _ = marker_palette(feature_data)
-    
-    g = sns.JointGrid(data=feature_data, x="logmstar", y="logsfr", height=5)
+        
+    g = sns.JointGrid(data=feature_data, x="logmstar", y="delta_logsfr", height=5)
 
     # ---- MAIN SCATTER ----
     g.plot_joint(sns.scatterplot, data=feature_data, hue="Feature Cluster", 
                  palette=palette, alpha=0.4, edgecolor="w", linewidth=0.3)
     g.ax_joint.set_xlim(5,)
     g.ax_joint.set_ylim(-7.5,)
+    g.ax_joint.set_xlabel('log(Mstar)',fontsize=14)
+    g.ax_joint.set_ylabel(r'$\Delta$log(SFR)',fontsize=14)
     
     # ---- KDE MARGINALS (the histogram distributions) ----
     for k, color in enumerate(palette):
@@ -468,7 +650,7 @@ def plot_sfrmstar(feature_data):
         sns.kdeplot(x=subset["logmstar"], ax=g.ax_marg_x, color=color, fill=True, alpha=0.3, linewidth=1.2)
 
         #right marginal (logsfr)
-        sns.kdeplot(y=subset["logsfr"], ax=g.ax_marg_y, color=color, fill=True, alpha=0.3, linewidth=1.2)
+        sns.kdeplot(y=subset["delta_logsfr"], ax=g.ax_marg_y, color=color, fill=True, alpha=0.3, linewidth=1.2)
     
     g.fig.set_size_inches(12, 6)
     

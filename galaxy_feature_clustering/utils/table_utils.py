@@ -41,12 +41,20 @@ def get_env_columns():
 
 
 def get_stellar_columns():
+    
+    from data_utils import get_ms_line, get_delta_logsfr
+    
     cigale = Table.read('data/cigale_vf_metallicity.fits')
     
     mstar = np.log10(cigale['bayes.stellar.m_star'])
     sfr = np.log10(cigale['bayes.sfh.sfr'])
     
-    return mstar, sfr
+    #determine the main sequence line fit to log(ssfr)>-11.5 galaxies
+    m, b = get_ms_line(mstar,sfr)
+    delta_sfr = get_delta_logsfr(mstar, sfr, m, b)
+    
+    
+    return mstar, sfr, delta_sfr
 
 
 ################################
@@ -72,7 +80,7 @@ def make_galfit_table(params, colors=False):
     data_table['Vcosmic'] = get_vcosmic_column()
     
     #append mstar, sfr columns
-    data_table['logmstar'], data_table['logsfr'] = get_stellar_columns()
+    data_table['logmstar'], data_table['logsfr'], data_table['delta_logsfr'] = get_stellar_columns()
     
     #add a size ratio column...just because. (I actually need it for analysis.)
     data_table['Size Ratio'] = data_table['CRE_W3-fixBA'] / data_table['CRE_W1-fixBA']
