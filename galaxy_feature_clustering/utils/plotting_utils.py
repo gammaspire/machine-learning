@@ -8,7 +8,9 @@ from data_utils import get_bootstrap_confint
 
 
 ######################################
+######################################
 # Defining a Consistent Plot Palette #
+######################################
 ######################################
 
 def marker_palette(feature_data):
@@ -48,7 +50,9 @@ def marker_palette(feature_data):
 
 
 #####################################
+#####################################
 # Plotting Silhouette Method Output #
+#####################################
 #####################################
 
 def plot_silhouette(K, silhouettes):
@@ -62,7 +66,9 @@ def plot_silhouette(K, silhouettes):
     
 
 ##########################################################
+##########################################################
 # Visualizing the Feature Groups in 2D PCA or UMAP Space #
+##########################################################
 ##########################################################
 
 def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
@@ -102,10 +108,12 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     plt.tight_layout()
     plt.show()
 
-
-###########################
-# Plotting PCA Components #
-###########################
+    
+##################################
+##################################
+# Plotting PCA Vector Components #
+##################################
+##################################
 
 def plot_pca_components(feature_data, features, pca, cmap_name='tab20'):
     '''
@@ -160,8 +168,10 @@ def plot_pca_components(feature_data, features, pca, cmap_name='tab20'):
 
 
 ##############################################
+##############################################
 # Plotting Feature Group Physical Properties #
 ############################################## 
+##############################################
     
 def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=False):
     '''
@@ -293,9 +303,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
             #convert bounds to asymmetric errorbars around the point
             unc_low = max(0.0, fraction - ci_low)
             unc_up  = max(0.0, ci_up - fraction)
-            
-            print(f'test one: {unc_low} {unc_up}')
-            
+                        
             #store the line variables!
             line_x[k_cluster].append(index[i])
             line_y[k_cluster].append(fraction)
@@ -429,8 +437,10 @@ def plot_env_stacked_hist(feature_data, main_only=False):
     
 
 ##############################################
+##############################################
 # Plotting Feature Group Physical Properties #
-############################################## 
+##############################################
+##############################################
 
 def plot_corner(feature_data, features=None):
     #suppress those WARNINGS PLS
@@ -569,7 +579,7 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
             upp_err = row[upperr_label]
                         
             #this line will only plot one point per iteration of the k_cluster 'for' loop
-            im = ax.scatter(k_cluster, median, s=80, 
+            im = ax.scatter(k_cluster, median, s=100, 
                             edgecolor=edge_colors[k_cluster], marker=marker_shapes[k_cluster],
                             color=cluster_colors[k_cluster], zorder=2, label=f'Feature Group {k_cluster}')
             
@@ -605,16 +615,121 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
     return
 
 
-def feature_rainclouds():
-    return
+def feature_rainclouds(feature_data, feature_list=None):
+    '''
+    AIM: create multiple raincloud plots showing each group's features and their associated distributions.
+        * 1/2 Violin Plot
+        * Boxplot
+        * Scatterplot
+    * feature_data should comprise a dataframe table of all galaxies and their feature values & 
+        lower+upper uncertainties.
+    * feature_list must be a python list of strings comprising the table column names of features the 
+        user would like to be plotted.
+    
+    * inspired by https://arxiv.org/pdf/2512.15137
+    
+    '''
+    
+    #create palette maps
+    color_map, edge_map, _ = marker_palette(feature_data)
+    
+    #create label dictionary for Feature Group features, this time for x-axis
+    label_dict = make_label_dictionary()
+    
+    #grab number of unique feature groups
+    k_clusters = sorted(feature_data['Feature Cluster'].unique())
+    
+    #create bool flags for each k feature cluster
+    kflags = {k: (feature_data['Feature Cluster'].values==k) for k in k_clusters}
+    
+    #intended layout dictionary for subpl0ts.
+    if feature_list is None or not isinstance(feature_list, list):
+        
+        message = 'Using default feature list for feature raincloud plots.'
+        
+        print('#'*len(message))
+        print(message)
+        print('#'*len(message))
+        
+        feature_list =  ['CRE_g_unscaled',
+                        'CRE_W1-fixBA_unscaled',
+                        'CRE_W3-fixBA_unscaled',
+                        'CN_g_unscaled',
+                        'CN_W1-fixBA_unscaled',
+                        'CN_W3-fixBA_unscaled',
+                        'Size Ratio',
+                        'NUV_r',
+                        'W1_W3']
+    
+    message = f'Incoming...expect an output of {len(feature_list)} plots.'
+        
+    print('#'*len(message))
+    print(message)
+    print('#'*len(message))
+    
+    #I will begin with one plot per feature. here's hoping the number of output figures is not too obnoxious.
+    for feature_name in feature_list:
+        fix, ax = plt.subplots(figsize=(10,6))
+        data_x = [feature_data[feature_name][kflags[k]] for k in k_clusters]
+        
+        #here is where you can impose outlier flags, if necessary
+        #data_x = [data[data[feature_name] < some_bound] for data in data_x]
+        
+        #create the botplox (boxplot)
+        bp = ax.boxplot(data_x, patch_artist=True, vert=False, showfliers=False,
+                medianprops=dict(color='k', linewidth=1.5), widths=0.1)
+        
+        #change colors, add some transparency
+        for patch, color in zip(bp['boxes'], color_map):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.4)
+        
+        #create the violin plot
+        vp = ax.violinplot(data_x, points=300, showmeans=False, showextrema=False, showmedians=False, vert=False)
+        
+        for i, b in enumerate(vp['bodies']):
 
+            #clip violin plot so we only see the upper half
+            #b is a single violin plot "body," which is drawn symmetrically about i+1
+            #get_paths()[0] collects polygon which defines that body
+            #.vertices[:, 1] extracts all of the y-components of the polygon vertices
+            #np.clip(a, low, high)
+                # any value below 'low' is set to 'low'
+                # any value above 'high' is set to 'high'
+                # as such, any part of the violin below i+1 and above i+1.6 is trimmed (clipped)
+            yvals = b.get_paths()[0].vertices[:, 1]
+            b.get_paths()[0].vertices[:, 1] = np.clip(yvals, i+1, i+1.6)
+            
+            #change the desired color
+            b.set_color(edge_map[i])
+            b.set_alpha(0.4)
+        
+        for i, features in enumerate(data_x):
+            
+            #add some "jitter" so the points of the features do not overlap one another on the y-axis
+            #indeed...without jitter, all points would like on a horizontal line. not helpful.
+            
+            #np.full is like np.zeros, but with i+8 values
+            #this will anchor all feature group points to some fixed y level
+            y = np.full(len(features), i + 0.8)
+            
+            #add some random vertical displacement to the y array
+            y += np.random.uniform(low=-0.05, high=0.05, size=len(y))
+            
+            #now...plot the scattered points.
+            plt.scatter(features, y, s=10, c=edge_map[i], alpha=0.05)
+        
+        ax.set_yticks([k+1 for k in k_clusters])
+        ax.set_yticklabels([f'Feature Cluster {k}' for k in k_clusters])
+        ax.set_xlabel(get_feature_label(feature_name, label_dict))   #need the fancy schmancy name!
 
-
-
+        plt.show()
 
 
 ########################################
+########################################
 # Plotting Feature Groups SFR v. Mstar #
+########################################
 ########################################
 
 def plot_sfrmstar(feature_data):

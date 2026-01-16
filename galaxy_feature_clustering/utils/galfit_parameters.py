@@ -121,12 +121,24 @@ PLOT_CLUSTERS=True
 PLOT_CORNER=False
 
 #set to True for the script to create subplots of the median galaxy features (including Size Ratio, NUV-r, and W1-W3)
+#COMPANION TO LAYOUT_DICT.
 PLOT_MEDIANS=True
 
 #the subplot coordinate/columnname dictionary to help organize the figure layout. If None, will default to using W1, W3, g-band Re+nser, as well as Size Ratio, NUV-r, and W1-W3.
 #must be a python dictionary. for example, if you only want one subplot with g-band effective radius:
     # LAYOUT_DICT = {(0, 0): 'CRE_g_unscaled'}
+#COMPANION TO PLOT_MEDIANS
 LAYOUT_DICT=None
+
+#set to True for the script to create raincloud plots showing the distribution of the galaxy features
+#for each feature group. 
+#COMPANION TO FEATURE_LIST
+PLOT_RAINCLOUDS=True
+
+#the feature list dictionary to dictate what features are included in the raincloud plots above. if None, will default to using W1, W3, g-band Re+nser, as well as Size Ratio, NUV-r, and W1-W3.
+#must be a python list, with elements written as strings and reflecting actual column names in the input data table.
+#COMPANION TO PLOT_RAINCLOUDS
+FEATURE_LIST=None
 
 #set to True for script to plot the fraction of galaxies in one of five VFS environments from Castignani+2022 (pure field, filament, poor group, rich group, cluster). these fractions are split up into however many feature clusters the user defines.
     #e.g., feature cluster 0 will be divided into five environments, feature cluster 1 will be divided into five environments, etc.
@@ -145,29 +157,40 @@ PLOT_SFRMSTAR=True
 #this is known as a DATACLASS! it's singular purpose is to be a container for variables :-)
 class Params():
     def __init__(self):
+        
         self.BANDS = BANDS
         self.COLUMNS = COLUMNS
         self.PSCALE = PSCALE
+        
         self.LOADTABLE = LOADTABLE
         self.KMEANS_DF_PATH = KMEANS_DF_PATH
         self.HDBSCAN_DF_PATH = HDBSCAN_DF_PATH
         self.SAVETABLE = SAVETABLE
+        
+        self.K = K
         self.MIN_CLUSTER_SIZE = MIN_CLUSTER_SIZE
         self.MIN_SAMPLES = MIN_SAMPLES
         self.METRIC = METRIC
         self.SELECTION_METHOD = SELECTION_METHOD
         self.OPTIMIZE_HDB_PARAMS = OPTIMIZE_HDB_PARAMS
+        
         self.IQRCLIP = IQRCLIP
-        self.K = K 
+        
         self.PLOT_SILHOUETTES = PLOT_SILHOUETTES
         self.PLOT_CORNER = PLOT_CORNER
         self.PLOT_CLUSTERS = PLOT_CLUSTERS
+        
         self.PLOT_MEDIANS = PLOT_MEDIANS
+        self.LAYOUT_DICT = LAYOUT_DICT
+        
+        self.PLOT_RAINCLOUDS = PLOT_RAINCLOUDS
+        self.FEATURE_LIST = FEATURE_LIST
+        
         self.PCA_FOR_PLOTTING = PCA_FOR_PLOTTING
         self.UMAP_FOR_PLOTTING = UMAP_FOR_PLOTTING
         self.PLOT_PCA_COMPONENTS = PLOT_PCA_COMPONENTS
         self.PLOT_ENV_FRACTION = PLOT_ENV_FRACTION
         self.PLOT_SFRMSTAR = PLOT_SFRMSTAR
-        self.LAYOUT_DICT = LAYOUT_DICT
+        
         self.X = X
         self.Y = Y

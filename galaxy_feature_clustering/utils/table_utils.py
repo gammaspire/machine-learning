@@ -129,8 +129,12 @@ def trim_galfit_table(full_df, params):
     #if magnitude colors are in the list of features, then we have to apply
     #a quality flag here too. This amount to just dropping the NaNs
     if 'NUV_r' in full_df.columns:
-        full_df = full_df.copy().dropna()
+        
+        #filter out non-finite numeric values (inf/-inf)
+        full_df = full_df[np.isfinite(full_df.select_dtypes(include=[np.number])).all(axis=1)]
+        
         message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT and PHOT quality flags.'
+    
     else:
         message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT quality flags.'
         

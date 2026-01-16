@@ -102,6 +102,12 @@ def run_kmeans(colors=False, save_table=True):
     
     #perform k-means clustering on the full set of features, using the K defined above.
     feature_data = run1_kmeans(df_scaled, features, k=K)
+      
+    if params.PLOT_RAINCLOUDS:
+        from plotting_utils import feature_rainclouds
+        
+        #plot rainclouds.
+        feature_rainclouds(feature_data, feature_list=params.FEATURE_LIST)
         
     #create a separate pandas dataframe comprising the median, uncertainty summary
     summary_rows = create_median_table(feature_data, features)
@@ -117,7 +123,7 @@ def run_kmeans(colors=False, save_table=True):
         
         #plot medians.
         plot_group_features(cluster_summary, layout_dict=params.LAYOUT_DICT)
-    
+
     #if user indicated a preference for a corner plot in galfit_parameters.py, oblige them
     #must precede PCA if any, so that these features are not included in the analysis
     if params.PLOT_CORNER:
@@ -140,14 +146,13 @@ def run_kmeans(colors=False, save_table=True):
         plot_clusters(feature_data, x=params.X, y=params.Y, PCA=params.PCA_FOR_PLOTTING)
     
     #self-explanatory. uninvolved. demure.
-    if params.PLOT_ENV_FRACTION:
-        #from plotting_utils import plot_env_fraction, plot_env_composition
-        #plot_env_fraction(feature_data, main_only=False)
-        #plot_env_composition(feature_data, main_only=False)
-        
-        from plotting_utils import plot_env_fraction
+    if params.PLOT_ENV_FRACTION:       
+        from plotting_utils import plot_env_fraction, plot_env_stacked_hist
         plot_env_fraction(feature_data, main_only=False, envfrac=True, envcomp=False)
         plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=True)
+        
+        #this plot is a histogram companion to envcomp=True
+        plot_env_stacked_hist(feature_data, main_only=False)
         
     #also self-explanatory. collected. uninhibited.
     if params.PLOT_SFRMSTAR:
