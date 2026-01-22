@@ -27,7 +27,7 @@ def read_phot_tables():
 #yes, I read the environment table twice. I like organization. cope.
 def get_vcosmic_column():
     env = Table.read('data/vf_v2_environment.fits')
-    return env['Vcosmic']
+    return env['VFID'], env['Vcosmic']
 
 
 def get_env_columns():
@@ -76,8 +76,8 @@ def make_galfit_table(params, colors=False):
         for colname in params.COLUMNS:
             data_table[f'{colname}_{band}'] = t[colname]
         
-    #append the Vcosmic column
-    data_table['Vcosmic'] = get_vcosmic_column()
+    #append the VFID and Vcosmic columns
+    data_table['VFID'], data_table['Vcosmic'] = get_vcosmic_column()
     
     #append mstar, sfr columns
     data_table['logmstar'], data_table['logsfr'], data_table['delta_logsfr'] = get_stellar_columns()
