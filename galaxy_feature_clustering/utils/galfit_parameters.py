@@ -26,6 +26,16 @@ KMEANS_DF_PATH='data/kmeans_feature_data.csv'
 HDBSCAN_DF_PATH='data/hdb_feature_data.csv'
 
 
+#############################################
+## logSFR and logMstar completeness limits ##
+#############################################
+
+#define logsfr, logmstar completeness limits for the sample here
+#see mass_sfr_completeness.ipynb for details.
+LOGSFR_LIM=-3.065
+LOGMSTAR_LIM=8.06
+
+
 ##############################
 ## bands and GALFIT columns ##
 ##############################

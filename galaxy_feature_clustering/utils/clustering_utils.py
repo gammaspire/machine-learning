@@ -77,7 +77,7 @@ def umap_2d(feature_data, features):
 # K-MEANS CLUSTERING FUNCTIONS #
 ################################
     
-def run1_kmeans(feature_data, features, k=3, print_=False):
+def run1_kmeans(feature_data, features, k=3, n_init=10, random_state=42, print_=False):
     '''
     Perform k-means clustering, output updated df with Feature Cluster column corresponding
         to which cluster each galaxy row belongs.
@@ -85,7 +85,7 @@ def run1_kmeans(feature_data, features, k=3, print_=False):
     
     feature_data = feature_data.copy()   #some failsafe line to suppress the pandas warning
     
-    kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+    kmeans = KMeans(n_clusters=k, random_state=42, n_init=n_init)
     
     #this silly bracket addition is needed when making a new df col and not editing an existing one..?
     feature_data.loc[:, 'Feature Cluster'] = kmeans.fit_predict(feature_data[features])

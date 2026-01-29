@@ -45,9 +45,12 @@ def get_stellar_columns():
     from data_utils import get_ms_line, get_delta_logsfr
     
     cigale = Table.read('data/cigale_vf_metallicity.fits')
-    
     mstar = np.log10(cigale['bayes.stellar.m_star'])
     sfr = np.log10(cigale['bayes.sfh.sfr'])
+    
+    #magphys = Table.read('data/vf-altphot.fits')
+    #mstar = magphys['combined_logMstar_med']
+    #sfr = magphys['combined_logSFR_med']
     
     #determine the main sequence line fit to log(ssfr)>-11.5 galaxies
     m, b = get_ms_line(mstar,sfr)
@@ -125,7 +128,10 @@ def trim_galfit_table(full_df, params):
         
     #drop rows with any convolved numerical error
     full_df = full_df.loc[~(full_df[numerr_cols]).any(axis=1)]
-        
+    
+    #apply the logMstar, logSFR completeness limit flags.  
+    full_df = completeness_limits(full_df)
+    
     #if magnitude colors are in the list of features, then we have to apply
     #a quality flag here too. This amount to just dropping the NaNs
     if 'NUV_r' in full_df.columns:
@@ -133,17 +139,34 @@ def trim_galfit_table(full_df, params):
         #filter out non-finite numeric values (inf/-inf)
         full_df = full_df[np.isfinite(full_df.select_dtypes(include=[np.number])).all(axis=1)]
         
-        message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT and PHOT quality flags.'
+        message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT, completeness limit, and PHOT quality flags.'
     
     else:
-        message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT quality flags.'
-        
+        message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with completeness limit and GALFIT quality flags.'        
+    
     print('#'*len(message))
     print(message)
     print('#'*len(message))
     
     #return the 'cleansed' dataframe
     return full_df
+
+
+###########################################
+# APPLYING SFR, MSTAR COMPLETENESS LIMITS #
+# Used in the "trimming" function above #
+###########################################
+
+def completeness_limits(trimmed_df, mstar_lim=8.06, sfr_lim=-3.06):
+    '''
+    Apply logmstar, logsfr completeness limits from the Virgowise sample paper!
+    '''
+    sfr_limit = (trimmed_df['logsfr'] > sfr_lim)
+    mstar_limit = (trimmed_df['logmstar'] > mstar_lim)
+    
+    complete_df = trimmed_df.copy()[mstar_limit & sfr_limit]
+    
+    return complete_df
 
 
 ##################################

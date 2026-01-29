@@ -746,14 +746,21 @@ def plot_sfrmstar(feature_data):
     
     #get palette colors
     palette, _, _ = marker_palette(feature_data)
-        
+    
+    #here are some fun flags that I 100% do not like and never want to see again.
+    #sfr_flag = (feature_data['logsfr']>-3.065)
+    #mstar_flag = (feature_data['logmstar']>8.06)    
+    
     g = sns.JointGrid(data=feature_data, x="logmstar", y="delta_logsfr", height=5)
 
     # ---- MAIN SCATTER ----
+    g.plot_joint(sns.scatterplot, data=feature_data, color='lightgray', alpha=0.4, linewidth=0.3)
+    
     g.plot_joint(sns.scatterplot, data=feature_data, hue="Feature Cluster", 
                  palette=palette, alpha=0.4, edgecolor="w", linewidth=0.3)
-    g.ax_joint.set_xlim(5,)
-    g.ax_joint.set_ylim(-7.5,)
+    
+    #g.ax_joint.set_xlim(5,)
+    #g.ax_joint.set_ylim(-7.5,)
     g.ax_joint.set_xlabel('log(Mstar)',fontsize=14)
     g.ax_joint.set_ylabel(r'$\Delta$log(SFR)',fontsize=14)
     

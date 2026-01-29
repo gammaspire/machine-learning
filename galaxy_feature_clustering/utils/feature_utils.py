@@ -100,15 +100,15 @@ def make_env_defs(feature_data, main_only=True):
                     'Pure Field':  feature_data['pure_field']}
         return env_defs
 
-    env_defs = {'Pure Cluster':              (feature_data['cluster_member']) & \
-                                             (~feature_data['filament_member']),
+    env_defs = {#'Pure Cluster':              (feature_data['cluster_member']) & \
+                #                             (~feature_data['filament_member']),
 
-               #'All Cluster':                (feature_data['cluster_member']),
+               'All Cluster':                (feature_data['cluster_member']),
 
-               'Filament\n&\nCluster':       (feature_data['cluster_member']) & \
-                                             (feature_data['filament_member']) & \
-                                             (~feature_data['rich_group_memb']) & \
-                                             (~feature_data['poor_group_memb']),
+               #'Filament\n&\nCluster':       (feature_data['cluster_member']) & \
+               #                              (feature_data['filament_member']) & \
+               #                              (~feature_data['rich_group_memb']) & \
+               #                              (~feature_data['poor_group_memb']),
 
                'Filament\n&\nRich Group':    (feature_data['rich_group_memb']) & \
                                              (feature_data['filament_member']),

@@ -94,7 +94,9 @@ def run_kmeans(colors=False, save_table=True):
         df_scaled.to_csv(params.KMEANS_DF_PATH, index=False)
     
     #define k cluster variable
-    K = params.K
+    #K = params.K
+    
+    K = 4
     
     #if user did not pre-select a K value, extract optimal K using the silhouette method
     if K is None:
