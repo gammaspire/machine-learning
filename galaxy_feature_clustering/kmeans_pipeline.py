@@ -82,8 +82,11 @@ def run_kmeans(colors=False, save_table=True):
         #convert effective radii (px) to effective radii (kpc)
         df_trimmed = get_kpc_columns(df_trimmed, params)
         
-        #remove pesky outliers that lie beyond 3-sigma of their respective features' means
-        df_clipped = iqr_clipping(df_trimmed, features, k_clip=params.IQRCLIP)
+        if params.IQRCLIP is not None:
+            #remove pesky outliers that lie beyond 3-sigma of their respective features' means
+            df_clipped = iqr_clipping(df_trimmed, features, k_clip=params.IQRCLIP)
+        else:
+            df_clipped = df_trimmed.copy()
         
         #scale the feature data.
         df_scaled = standardize_data(df_clipped, features)
@@ -94,10 +97,8 @@ def run_kmeans(colors=False, save_table=True):
         df_scaled.to_csv(params.KMEANS_DF_PATH, index=False)
     
     #define k cluster variable
-    #K = params.K
-    
-    K = 4
-    
+    K = params.K
+
     #if user did not pre-select a K value, extract optimal K using the silhouette method
     if K is None:
         K = find_optimal_k(df_scaled, features, min_k=2, max_k=10, plot=params.PLOT_SILHOUETTES)

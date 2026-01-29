@@ -32,6 +32,7 @@ HDBSCAN_DF_PATH='data/hdb_feature_data.csv'
 
 #define logsfr, logmstar completeness limits for the sample here
 #see mass_sfr_completeness.ipynb for details.
+#set either to None if you do not want that completeness limit applied.
 LOGSFR_LIM=-3.065
 LOGMSTAR_LIM=8.06
 
@@ -171,6 +172,8 @@ class Params():
         self.BANDS = BANDS
         self.COLUMNS = COLUMNS
         self.PSCALE = PSCALE
+        self.LOGSFR_LIM = LOGSFR_LIM
+        self.LOGMSTAR_LIM = LOGMSTAR_LIM
         
         self.LOADTABLE = LOADTABLE
         self.KMEANS_DF_PATH = KMEANS_DF_PATH

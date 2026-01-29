@@ -52,6 +52,7 @@ def get_stellar_columns():
     #mstar = magphys['combined_logMstar_med']
     #sfr = magphys['combined_logSFR_med']
     
+    #before ANY trimming is applied to the data,
     #determine the main sequence line fit to log(ssfr)>-11.5 galaxies
     m, b = get_ms_line(mstar,sfr)
     delta_sfr = get_delta_logsfr(mstar, sfr, m, b)
@@ -130,7 +131,7 @@ def trim_galfit_table(full_df, params):
     full_df = full_df.loc[~(full_df[numerr_cols]).any(axis=1)]
     
     #apply the logMstar, logSFR completeness limit flags.  
-    full_df = completeness_limits(full_df)
+    full_df = completeness_limits(full_df, params.LOGMSTAR_LIM, params.LOGSFR_LIM)
     
     #if magnitude colors are in the list of features, then we have to apply
     #a quality flag here too. This amount to just dropping the NaNs
@@ -157,12 +158,22 @@ def trim_galfit_table(full_df, params):
 # Used in the "trimming" function above #
 ###########################################
 
-def completeness_limits(trimmed_df, mstar_lim=8.06, sfr_lim=-3.06):
+def completeness_limits(trimmed_df, mstar_lim=None, sfr_lim=None):
     '''
     Apply logmstar, logsfr completeness limits from the Virgowise sample paper!
     '''
-    sfr_limit = (trimmed_df['logsfr'] > sfr_lim)
-    mstar_limit = (trimmed_df['logmstar'] > mstar_lim)
+    
+    print(f'Applying the following completeness limits: logMstar > {mstar_lim}, logSFR > {sfr_lim}')
+    
+    #initialize the sfr, mstar flags as all-True flags (equivalent to multiplying by 1)
+    sfr_limit = np.ones(len(trimmed_df),dtype=bool)
+    mstar_limit = np.ones(len(trimmed_df),dtype=bool)
+    
+    #if the user actually put integers into the galfit_parameters.py file, CHANGE THE BOOLS
+    if sfr_limit is not None:
+        sfr_limit = (trimmed_df['logsfr'] > sfr_lim)
+    if mstar_limit is not None:
+        mstar_limit = (trimmed_df['logmstar'] > mstar_lim)
     
     complete_df = trimmed_df.copy()[mstar_limit & sfr_limit]
     
