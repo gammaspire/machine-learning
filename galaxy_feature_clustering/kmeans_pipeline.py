@@ -102,7 +102,7 @@ def run_kmeans(colors=False, save_table=True):
     #if user did not pre-select a K value, extract optimal K using the silhouette method
     if K is None:
         K = find_optimal_k(df_scaled, features, min_k=2, max_k=10, plot=params.PLOT_SILHOUETTES)
-    
+        
     #perform k-means clustering on the full set of features, using the K defined above.
     feature_data = run1_kmeans(df_scaled, features, k=K)
       

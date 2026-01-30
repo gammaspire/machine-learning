@@ -6,20 +6,20 @@
 #################################
 #    FEATURE TABLE SAVE/LOAD    #
 #################################
-
-#if the feature df is already available, set the DF_PATH and LOADTABLE=True
-#TABLE REQUIREMENTS:
-    #trimmed to remove unreliable fits, nser>6, etc.
-    #effective radii converted from pixels to kpc
-    #IQR-clipped rows
-    #standardized values for every feature (possibly including color, depending on user input) 
-    #the _unscaled variants of every feature
-    #correct column names!
-#if the table is in data/ of the root directory, only need to specify 'data/filename.csv'
-#set SAVETABLE=True to save the feature_data table after creation! will default to DF_PATH
-#NOTE I: IF SAVETABLE=TRUE, YOU MUST SET LOADTABLE=FALSE!
-#NOTE II: there are two df paths because kmeans may use IQR-clipping. This fundamentally changes the density
-    #space of the data distribution, and thus non-trivially affects HDBSCAN.
+'''
+if the feature df is already available, set the DF_PATH and LOADTABLE=True
+TABLE REQUIREMENTS:
+    * trimmed to remove unreliable fits, nser>6, etc.
+    * effective radii converted from pixels to kpc
+    * IQR-clipped rows
+    * standardized values for every feature (possibly including color, depending on user input) 
+    * the _unscaled variants of every feature
+    * correct column names!
+* if the table is in data/ of the root directory, only need to specify 'data/filename.csv'
+* set SAVETABLE=True to save the feature_data table after creation! will default to DF_PATH
+* NOTE I: IF SAVETABLE=TRUE, YOU MUST SET LOADTABLE=FALSE!
+* NOTE II: there are two df paths because kmeans may use IQR-clipping. This fundamentally changes the density space of the data distribution, and thus non-trivially affects HDBSCAN.
+'''
 LOADTABLE=False
 SAVETABLE=True
 KMEANS_DF_PATH='data/kmeans_feature_data.csv'
@@ -29,33 +29,45 @@ HDBSCAN_DF_PATH='data/hdb_feature_data.csv'
 #############################################
 ## logSFR and logMstar completeness limits ##
 #############################################
-
-#define logsfr, logmstar completeness limits for the sample here
-#see mass_sfr_completeness.ipynb for details.
-#set either to None if you do not want that completeness limit applied.
-LOGSFR_LIM=-3.065
+'''
+* define logsfr, logmstar completeness limits for the sample here
+* see mass_sfr_completeness.ipynb for details.
+* set either to None if you do not want that completeness limit applied.
+'''
+#LOGSFR_LIM=-3.065
+LOGSFR_LIM=-3.309
 LOGMSTAR_LIM=8.06
 
 
 ##############################
 ## bands and GALFIT columns ##
 ##############################
+'''
+DEFINE THE BANDS AND COLUMNS IN THE GALFIT DATA TABLE
+z-band table is entirely empty. all zeros and False bools. as such, the band is excluded here. I also exclude W4 due to its low SNR.
+Combined, COLUMNS & BANDS_TO_CLUSTER comprise the columns used in the clustering algorithm.
+BANDS are simply all bands that I want in the dataframe.
+'''
+BANDS=['g','r','W1-fixBA','W2','W3-fixBA']   #ALL bands
+BANDS_TO_CLUSTER=['g','r','W1-fixBA','W3-fixBA']      #bands that are considered for the clustering algorithm
 
-#z-band table is entirely empty. all zeros and False bools. as such, the band is excluded here.
-#BANDS AND COLUMNNAMES IN THE GALFIT DATA TABLE
-BANDS=['g','r','W1-fixBA','W2','W3-fixBA']
 COLUMNS=['CXC','CRE','CN','CNumerical_Error']   #NOTE THESE ARE FEATURE LABELS ARE LATER CHANGED
                                                 #CRE --> Effective Radius
                                                 #CN --> Sersic Index
+#pixel to arcsec conversion scale
 PSCALE={'g':0.262,'r':0.262,'z':0.262,
-        'W1':2.75,'W1-fixBA':2.75,'W2':2.75,'W3':2.75,'W3-fixBA':2.75,'W4':2.75}  #from mucho-galfit code
+        'W1':2.75,'W1-fixBA':2.75,
+        'W2':2.75,
+        'W3':2.75,'W3-fixBA':2.75,
+        'W4':2.75}  #from mucho-galfit code
 
 
 ################################
 ###    HDBSCAN PARAMETERS    ###
 ################################
-
-#define the parameters!
+'''
+define the HDBSCAN parameters!
+'''
 MIN_SAMPLES=3
 MIN_CLUSTER_SIZE=80
 METRIC='canberra'
@@ -68,23 +80,24 @@ OPTIMIZE_HDB_PARAMS=False
 ###############################
 ####   KMEANS PARAMETERS   ####
 ###############################
-
-#The desired k limit for clipping outliers from the data distribution via interquartile ranges. 
-#For reference:
-    #IQRCLIP=1.5 has a Gaussian equivalent of ~3sigma
-    #IQRCLIP=2.5 has a Gaussian equivalent of ~4sigma
+'''
+The desired k limit for clipping outliers from the data distribution via interquartile ranges. 
+* For reference:
+    * IQRCLIP=1.5 has a Gaussian equivalent of ~3sigma
+    * IQRCLIP=2.5 has a Gaussian equivalent of ~4sigma
 #######################
 # ~How does it work?~ #
 #######################
-    #IQR is the spread of the middle 50% of the data
+    * IQR is the spread of the middle 50% of the data
         #the "typical" data.
-    #Q1 is the bound below which 25% of the data falls
-    #Q3 is the bound above which 25% of the data falls and below which 75% of the data falls
-    #for IQR clipping: lower bound is (Q1 - IQRCLIP * IQR), upper bound is (Q3 + IQRCLIP * IQR)
+    * Q1 is the bound below which 25% of the data falls
+    * Q3 is the bound above which 25% of the data falls and below which 75% of the data falls
+    * for IQR clipping: lower bound is (Q1 - IQRCLIP * IQR), upper bound is (Q3 + IQRCLIP * IQR)
         #say I set IQRCLIP = 1.5 (standard Tukey method)
         #take original Q1 and Q3 and *move* them outward such that the new IQR is 1.5x its original size
         #any points not in this bloated IQR are outliers. goodbye outliers.
-#set to None to include full range of parameters.
+* set to None to include full range of parameters.
+'''
 IQRCLIP=1.5
 
 #number of clusters to use for kmeans
@@ -135,11 +148,30 @@ PLOT_CORNER=False
 #COMPANION TO LAYOUT_DICT.
 PLOT_MEDIANS=True
 
-#the subplot coordinate/columnname dictionary to help organize the figure layout. If None, will default to using W1, W3, g-band Re+nser, as well as Size Ratio, NUV-r, and W1-W3.
-#must be a python dictionary. for example, if you only want one subplot with g-band effective radius:
-    # LAYOUT_DICT = {(0, 0): 'CRE_g_unscaled'}
-#COMPANION TO PLOT_MEDIANS
-LAYOUT_DICT=None
+'''
+The subplot coordinate/columnname dictionary to help organize the figure layout. If None, will default to using W1, W3, g-band Re+nser, as well as Size Ratio, NUV-r, and W1-W3.
+* Must be a python dictionary. for example, if you only want one subplot with g-band effective radius:
+    LAYOUT_DICT = {(0, 0): 'CRE_g_unscaled'}
+* COMPANION TO PLOT_MEDIANS
+'''
+#LAYOUT_DICT=   {(0, 0): 'CRE_g_unscaled',
+#                (0, 1): 'CRE_W1-fixBA_unscaled',
+#                (1, 0): 'CN_g_unscaled',
+#                (1, 1): 'CN_W1-fixBA_unscaled',
+#                (2, 0): 'Size Ratio',
+#                (2, 1): 'NUV_r',
+#                (3, 0): 'W1_W3'}
+
+LAYOUT_DICT=   {(0, 0): 'CRE_g_unscaled',
+                (0, 1): 'CRE_W1-fixBA_unscaled',
+                (0, 2): 'CRE_W3-fixBA_unscaled',
+                (1, 0): 'CN_g_unscaled',
+                (1, 1): 'CN_W1-fixBA_unscaled',
+                (1, 2): 'CN_W3-fixBA_unscaled',
+                (2, 0): 'Size Ratio',
+                (2, 1): 'NUV_r',
+                (2, 2): 'W1_W3'}
+
 
 #set to True for the script to create raincloud plots showing the distribution of the galaxy features
 #for each feature group. 
@@ -170,6 +202,7 @@ class Params():
     def __init__(self):
         
         self.BANDS = BANDS
+        self.BANDS_TO_CLUSTER = BANDS_TO_CLUSTER
         self.COLUMNS = COLUMNS
         self.PSCALE = PSCALE
         self.LOGSFR_LIM = LOGSFR_LIM

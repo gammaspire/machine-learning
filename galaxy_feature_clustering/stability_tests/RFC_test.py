@@ -12,10 +12,13 @@ import sys
 sys.path.insert(0,'../utils')
 
 from clustering_utils import run1_kmeans
+from feature_utils import get_feature_names
+from galfit_parameters import Params
+params = Params()
 
-def run_rfc_comparison(df, k_list, n_init=10, 
-                       feature_labels = ['CRE_g', 'CRE_r','CRE_W1-fixBA','CRE_W3-fixBA',
-                                         'CN_g', 'CN_r', 'CN_W1-fixBA', 'CN_W3-fixBA']):
+def run_rfc_comparison(df, k_list, n_init=10):
+    
+    feature_labels = get_feature_names(params)
     
     if type(k_list) is not list:
         print('k must be a list of integers.')

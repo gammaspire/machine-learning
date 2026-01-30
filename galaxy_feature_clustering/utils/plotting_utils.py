@@ -511,27 +511,21 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
     #in the median_data table, there is one row for every kth feature group
     k = len(median_data)
     
-    #intended layout dictionary for subpl0ts.
+    #intended layout dictionary for subpl0ts. the 'default' is a failsafe. :-)
     if layout_dict is None or not isinstance(layout_dict, dict):
         
-        message = 'Using default layout dictionary for median group feature subplots!'
+        message = 'Using default layout dictionary for median group feature subplots...'
         
         print('#'*len(message))
         print(message)
         print('#'*len(message))
-        
-        layout_dict =  {(0, 0): 'CRE_g_unscaled',
-                        (0, 1): 'CRE_W1-fixBA_unscaled',
-                        (0, 2): 'CRE_W3-fixBA_unscaled',
-                        (1, 0): 'CN_g_unscaled',
-                        (1, 1): 'CN_W1-fixBA_unscaled',
-                        (1, 2): 'CN_W3-fixBA_unscaled',
-                        (2, 0): 'Size Ratio',
-                        (2, 1): 'NUV_r',
-                        (2, 2): 'W1_W3'}
-        ncol = 3
-        nrow = 3
-    
+
+        layout_dict =  {(0, 0): 'Size Ratio',
+                        (0, 1): 'NUV_r',
+                        (0, 2): 'W1_W3'}
+        ncol = 2
+        nrow = 1
+            
     else:
         #the last layout_dict entry is (i, j), where i=nrow and j=ncol
         #sort coordinates from least to greatest, pull the "greatest" from the list
@@ -591,11 +585,11 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
         if 'CN' in med_label:
             ylims = nser_ylim
             if nser_ylim is None:
-                ylims = (0,2)
+                ylims = (0.5,3)
         elif 'CRE' in med_label:
             ylims = re_ylim
             if re_ylim is None:
-                ylims = (0,5)
+                ylims = (0,6)
         else:
             ylims = ()  #no limits :-)
         
@@ -610,7 +604,15 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
         ax.set_xlabel('Feature Group [k]')
         ax.set_ylabel(get_feature_label(med_label, label_dict))   #need the fancy schmancy name!
         ax.grid(alpha=0.1)
-    
+        
+    #lastly...remove axes not used in the layout_dict
+    used_axes = set(layout_dict.keys())
+
+    for i in range(nrow):
+        for j in range(ncol):
+            if (i, j) not in used_axes:
+                fig.delaxes(axes[i, j])
+
     plt.show()
     return
 
@@ -645,21 +647,22 @@ def feature_rainclouds(feature_data, feature_list=None):
     #intended layout dictionary for subpl0ts.
     if feature_list is None or not isinstance(feature_list, list):
         
-        message = 'Using default feature list for feature raincloud plots.'
-        
-        print('#'*len(message))
-        print(message)
-        print('#'*len(message))
+        message = 'Using default feature list for feature raincloud plots:'
         
         feature_list =  ['CRE_g_unscaled',
                         'CRE_W1-fixBA_unscaled',
-                        'CRE_W3-fixBA_unscaled',
+                        #'CRE_W3-fixBA_unscaled',
                         'CN_g_unscaled',
                         'CN_W1-fixBA_unscaled',
-                        'CN_W3-fixBA_unscaled',
+                        #'CN_W3-fixBA_unscaled',
                         'Size Ratio',
                         'NUV_r',
                         'W1_W3']
+        
+        print('#'*len(message))
+        print(message)
+        print(feature_list)
+        print('#'*len(message))
     
     message = f'Incoming...expect an output of {len(feature_list)} plots.'
         

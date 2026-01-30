@@ -7,8 +7,8 @@ def get_feature_names(params, colors=False):
     AIM: return list of all feature names for specified parameters in, surprise, galfit_parameters.py
     '''
     #define Re, Sersic index feature columns
-    re_cols = [f'CRE_{band}' for band in params.BANDS]
-    nser_cols = [f'CN_{band}' for band in params.BANDS]
+    re_cols = [f'CRE_{band}' for band in params.BANDS_TO_CLUSTER]
+    nser_cols = [f'CN_{band}' for band in params.BANDS_TO_CLUSTER]
     
     #combine
     features = re_cols + nser_cols

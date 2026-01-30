@@ -75,6 +75,7 @@ def make_galfit_table(params, colors=False):
     #create empty astropy table
     data_table = Table()
     
+    #put ALL bands in the dataframe.
     for band in params.BANDS:
         t = Table.read(f'data/vf_v2_galfit_{band}.fits')
         for colname in params.COLUMNS:
@@ -86,7 +87,7 @@ def make_galfit_table(params, colors=False):
     #append mstar, sfr columns
     data_table['logmstar'], data_table['logsfr'], data_table['delta_logsfr'] = get_stellar_columns()
     
-    #add a size ratio column...just because. (I actually need it for analysis.)
+    #add a size ratio column...just because. (I actually need it for analysis. not used for clustering.'d)
     data_table['Size Ratio'] = data_table['CRE_W3-fixBA'] / data_table['CRE_W1-fixBA']
     
     #add NUV-r, W1-W3 colors
@@ -117,9 +118,9 @@ def trim_galfit_table(full_df, params):
     ngal_before = len(full_df)
     
     #center x-position, Nser, numerical error columns
-    xyc_cols = [f'CXC_{band}' for band in params.BANDS]
-    nser_cols = [f'CN_{band}' for band in params.BANDS]
-    numerr_cols = [f'CNumerical_Error_{band}' for band in params.BANDS]
+    xyc_cols = [f'CXC_{band}' for band in params.BANDS_TO_CLUSTER]
+    nser_cols = [f'CN_{band}' for band in params.BANDS_TO_CLUSTER]
+    numerr_cols = [f'CNumerical_Error_{band}' for band in params.BANDS_TO_CLUSTER]
     
     #drop row if any central x pixel coordinate cell is zero
     full_df = full_df.loc[~(full_df[xyc_cols]==0).any(axis=1)]
@@ -132,6 +133,9 @@ def trim_galfit_table(full_df, params):
     
     #apply the logMstar, logSFR completeness limit flags.  
     full_df = completeness_limits(full_df, params.LOGMSTAR_LIM, params.LOGSFR_LIM)
+    
+    #apply vcosmic limit (TEST)
+    full_df = full_df.loc[~(full_df['Vcosmic']<2000.)]
     
     #if magnitude colors are in the list of features, then we have to apply
     #a quality flag here too. This amount to just dropping the NaNs
@@ -158,24 +162,24 @@ def trim_galfit_table(full_df, params):
 # Used in the "trimming" function above #
 ###########################################
 
-def completeness_limits(trimmed_df, mstar_lim=None, sfr_lim=None):
+def completeness_limits(trimmed_df, mstar_limit=None, sfr_limit=None):
     '''
     Apply logmstar, logsfr completeness limits from the Virgowise sample paper!
     '''
     
-    print(f'Applying the following completeness limits: logMstar > {mstar_lim}, logSFR > {sfr_lim}')
+    print(f'Applying the following completeness limits: logMstar > {mstar_limit}, logSFR > {sfr_limit}')
     
     #initialize the sfr, mstar flags as all-True flags (equivalent to multiplying by 1)
-    sfr_limit = np.ones(len(trimmed_df),dtype=bool)
-    mstar_limit = np.ones(len(trimmed_df),dtype=bool)
+    sfr_flag = np.ones(len(trimmed_df),dtype=bool)
+    mstar_flag = np.ones(len(trimmed_df),dtype=bool)
     
     #if the user actually put integers into the galfit_parameters.py file, CHANGE THE BOOLS
     if sfr_limit is not None:
-        sfr_limit = (trimmed_df['logsfr'] > sfr_lim)
+        sfr_flag = (trimmed_df['logsfr'] > sfr_limit)
     if mstar_limit is not None:
-        mstar_limit = (trimmed_df['logmstar'] > mstar_lim)
+        mstar_flag = (trimmed_df['logmstar'] > mstar_limit)
     
-    complete_df = trimmed_df.copy()[mstar_limit & sfr_limit]
+    complete_df = trimmed_df.copy()[mstar_flag & sfr_flag]
     
     return complete_df
 

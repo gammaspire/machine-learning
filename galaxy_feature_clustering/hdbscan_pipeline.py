@@ -164,7 +164,8 @@ def run_hdbscan(colors=False, save_table=True):
     #self-explanatory. uninvolved. demure.
     if params.PLOT_ENV_FRACTION:
         from plotting_utils import plot_env_fraction
-        plot_env_fraction(clean_data, main_only=True) #no noise data, pls.
+        plot_env_fraction(clean_data, main_only=False, envcomp=True) #no noise data, pls.
+        plot_env_fraction(clean_data, main_only=False, envfrac=True) #no noise data, pls.
     
     #also self-explanatory. collected. uninhibited.
     if params.PLOT_SFRMSTAR:
