@@ -37,7 +37,7 @@ from conversion_utils import *
 from feature_utils import get_feature_names
 from clustering_utils import find_optimal_k, run1_kmeans, pca_2d
 
-from galfit_parameters import Params
+from init_parameters import Params
 params = Params()
 
 import numpy as np

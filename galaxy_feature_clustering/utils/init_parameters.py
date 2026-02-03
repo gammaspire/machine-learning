@@ -34,8 +34,8 @@ HDBSCAN_DF_PATH='data/hdb_feature_data.csv'
 * see mass_sfr_completeness.ipynb for details.
 * set either to None if you do not want that completeness limit applied.
 '''
-#LOGSFR_LIM=-3.065
-LOGSFR_LIM=-3.309
+LOGSFR_LIM=-3.065
+#LOGSFR_LIM=-3.309   #limit for Vcosmic<2000. sample.
 LOGMSTAR_LIM=8.06
 
 
@@ -48,8 +48,8 @@ z-band table is entirely empty. all zeros and False bools. as such, the band is 
 Combined, COLUMNS & BANDS_TO_CLUSTER comprise the columns used in the clustering algorithm.
 BANDS are simply all bands that I want in the dataframe.
 '''
-BANDS=['g','r','W1-fixBA','W2','W3-fixBA']   #ALL bands
-BANDS_TO_CLUSTER=['g','r','W1-fixBA','W3-fixBA']      #bands that are considered for the clustering algorithm
+BANDS=['g','r','W1-fixBA','W2','W3-fixBA']            #ALL bands
+BANDS_TO_CLUSTER=['g','r','W1-fixBA','W2', 'W3-fixBA']      #bands that are considered for the clustering algorithm
 
 COLUMNS=['CXC','CRE','CN','CNumerical_Error']   #NOTE THESE ARE FEATURE LABELS ARE LATER CHANGED
                                                 #CRE --> Effective Radius

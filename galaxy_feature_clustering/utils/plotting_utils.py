@@ -280,7 +280,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
                 
                 title_ = 'Feature Group Composition Within each Envirionment'
                 ylim1 = 0
-                ylim2 = 1
+                ylim2 = 0.7
             
             ########
             # BOTH #
@@ -522,9 +522,9 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
 
         layout_dict =  {(0, 0): 'Size Ratio',
                         (0, 1): 'NUV_r',
-                        (0, 2): 'W1_W3'}
+                        (1, 0): 'W1_W3'}
         ncol = 2
-        nrow = 1
+        nrow = 2
             
     else:
         #the last layout_dict entry is (i, j), where i=nrow and j=ncol
@@ -585,7 +585,7 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
         if 'CN' in med_label:
             ylims = nser_ylim
             if nser_ylim is None:
-                ylims = (0.5,3)
+                ylims = (0.0,2.5)
         elif 'CRE' in med_label:
             ylims = re_ylim
             if re_ylim is None:
@@ -649,15 +649,15 @@ def feature_rainclouds(feature_data, feature_list=None):
         
         message = 'Using default feature list for feature raincloud plots:'
         
-        feature_list =  ['CRE_g_unscaled',
-                        'CRE_W1-fixBA_unscaled',
-                        #'CRE_W3-fixBA_unscaled',
-                        'CN_g_unscaled',
-                        'CN_W1-fixBA_unscaled',
-                        #'CN_W3-fixBA_unscaled',
-                        'Size Ratio',
-                        'NUV_r',
-                        'W1_W3']
+        feature_list =  [#'CRE_g_unscaled',
+                         #'CRE_W1-fixBA_unscaled',
+                         #'CRE_W3-fixBA_unscaled',
+                         #'CN_g_unscaled',
+                         #'CN_W1-fixBA_unscaled',
+                         #'CN_W3-fixBA_unscaled',
+                         'Size Ratio',
+                         'NUV_r',
+                         'W1_W3']
         
         print('#'*len(message))
         print(message)
@@ -780,4 +780,59 @@ def plot_sfrmstar(feature_data):
     g.fig.set_size_inches(12, 6)
     
     plt.show()
+    
     return
+
+
+#####################################
+#####################################
+# Plotting Feature Groups dSFR KDEs #
+#####################################
+#####################################
+
+def plot_dSFR_KDEs(feature_data):
+    '''
+    AIM: plot dlog(SFR) KDE plots for all feature groups; include KS-test statistics.
+    '''
+    from scipy.stats import ks_2samp
+    from itertools import combinations
+    
+    #if the required columns are not present, cannot run the function. derp.
+    if 'delta_logsfr' not in feature_data.columns:
+        print('Need "delta_logsfr" column before proceeding!')
+        return
+    if 'Feature Cluster' not in feature_data.columns:
+        print('Need "Feature Cluster" column before proceeding!')
+        return
+    
+    #color/marker bookkeeping...
+    colors, edgecolors, marker_shapes = marker_palette(feature_data)
+    
+    #grab number of unique feature groups
+    k_clusters = np.sort(feature_data['Feature Cluster'].unique())
+    
+    #create bool flags for each k feature cluster
+    kflags = {k: (feature_data['Feature Cluster'].values==k) for k in k_clusters}
+    
+    for k in k_clusters:
+        dlogsfr = feature_data['delta_logsfr'][kflags[k]]
+        fig = sns.kdeplot(dlogsfr, color=colors[k], label=f'Feature Group {k}: {len(feature_data[kflags[k]])}')
+    
+    plt.xlabel(r'$\Delta$logSFR')
+    plt.title(r'$\Delta$logSFR KDE Distribution per Feature Group')
+    fig.legend()
+    plt.show()   
+    
+    #create unique pairs for K-S TEST...
+    k_pairs = list(combinations(k_clusters, 2))
+    
+    #isolate the components of each kpair, then put into ks_2samp.
+    for k1, k2 in k_pairs:
+        
+        ks_stat, p_value = ks_2samp(feature_data['delta_logsfr'][kflags[k1]],feature_data['delta_logsfr'][kflags[k2]])
+        print('--------------------')
+        print(f'ks stat (FG{k1} & FG{k2}): {ks_stat}')
+        print(f'p-value (FG{k1} & FG{k2}): {p_value}')
+        print('--------------------')
+    
+    return 

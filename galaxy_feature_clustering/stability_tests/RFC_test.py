@@ -13,7 +13,7 @@ sys.path.insert(0,'../utils')
 
 from clustering_utils import run1_kmeans
 from feature_utils import get_feature_names
-from galfit_parameters import Params
+from init_parameters import Params
 params = Params()
 
 def run_rfc_comparison(df, k_list, n_init=10):

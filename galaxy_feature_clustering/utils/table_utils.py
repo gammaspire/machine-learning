@@ -135,7 +135,7 @@ def trim_galfit_table(full_df, params):
     full_df = completeness_limits(full_df, params.LOGMSTAR_LIM, params.LOGSFR_LIM)
     
     #apply vcosmic limit (TEST)
-    full_df = full_df.loc[~(full_df['Vcosmic']<2000.)]
+    #full_df = full_df.loc[~(full_df['Vcosmic']<2000.)]
     
     #if magnitude colors are in the list of features, then we have to apply
     #a quality flag here too. This amount to just dropping the NaNs

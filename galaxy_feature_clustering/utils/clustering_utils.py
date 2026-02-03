@@ -77,7 +77,7 @@ def umap_2d(feature_data, features):
 # K-MEANS CLUSTERING FUNCTIONS #
 ################################
     
-def run1_kmeans(feature_data, features, k=3, n_init=10, random_state=42, print_=False):
+def run1_kmeans(feature_data, features, k=3, n_init=10, random_state=42):
     '''
     Perform k-means clustering, output updated df with Feature Cluster column corresponding
         to which cluster each galaxy row belongs.
@@ -144,6 +144,7 @@ def run1_hdbscan(feature_data, features, min_cluster_size=20, min_samples=10,
 
 def dbcv_score(X, features):
     return validity_index(X, features)
+
 
 def find_optimal_hdbparams(feature_data, 
                            features,
