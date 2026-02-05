@@ -106,6 +106,12 @@ def run_kmeans(colors=False, save_table=True):
     #perform k-means clustering on the full set of features, using the K defined above.
     feature_data = run1_kmeans(df_scaled, features, k=K)
       
+    #for plotting aesthetic purposes primarily, re-assign Feature Group k-values such that, if k=3, the suppressed
+    #population is FG1, the large CRE_g is FG2, and the small CRE_g is FG0.
+    #if k!=3, this function will do nothing.
+    #kind of sort of exclusive to my VFS dataset. 
+    feature_data = k_reassignment(feature_data)
+    
     if params.PLOT_RAINCLOUDS:
         from plotting_utils import feature_rainclouds
         

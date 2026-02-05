@@ -34,8 +34,9 @@ HDBSCAN_DF_PATH='data/hdb_feature_data.csv'
 * see mass_sfr_completeness.ipynb for details.
 * set either to None if you do not want that completeness limit applied.
 '''
-LOGSFR_LIM=-3.065
-#LOGSFR_LIM=-3.309   #limit for Vcosmic<2000. sample.
+#LOGSFR_LIM=-3.065   #limit for all galaxies, using W3 SNR
+#LOGSFR_LIM=-3.309   #limit for Vcosmic<2000. sample, using W3 SNR
+LOGSFR_LIM=None
 LOGMSTAR_LIM=8.06
 
 
@@ -49,11 +50,13 @@ Combined, COLUMNS & BANDS_TO_CLUSTER comprise the columns used in the clustering
 BANDS are simply all bands that I want in the dataframe.
 '''
 BANDS=['g','r','W1-fixBA','W2','W3-fixBA']            #ALL bands
-BANDS_TO_CLUSTER=['g','r','W1-fixBA','W2', 'W3-fixBA']      #bands that are considered for the clustering algorithm
+BANDS_TO_CLUSTER=['g','W1-fixBA']      #bands that are considered for the clustering algorithm
 
 COLUMNS=['CXC','CRE','CN','CNumerical_Error']   #NOTE THESE ARE FEATURE LABELS ARE LATER CHANGED
                                                 #CRE --> Effective Radius
                                                 #CN --> Sersic Index
+                                                #CXC --> central x-pixel (used to diagnose whether GALFIT model crashed)
+                                                #CNumerical Error --> a flag indicating the robustness of the GALFIT model
 #pixel to arcsec conversion scale
 PSCALE={'g':0.262,'r':0.262,'z':0.262,
         'W1':2.75,'W1-fixBA':2.75,
@@ -121,8 +124,8 @@ PCA_FOR_PLOTTING=True
 PLOT_PCA_COMPONENTS=False
 
 #If PCA_FOR_PLOTTING is False, choose X and Y columns below for plotting feature clusters in 2D space
-X='[W1] Sersic Index_unscaled'
-Y='[W3] Sersic Index_unscaled'
+X='CN_W1-fixBA_unscaled'
+Y='CN_W3-fixBA_unscaled'
 
 
 ###############################################
@@ -154,29 +157,29 @@ The subplot coordinate/columnname dictionary to help organize the figure layout.
     LAYOUT_DICT = {(0, 0): 'CRE_g_unscaled'}
 * COMPANION TO PLOT_MEDIANS
 '''
-#LAYOUT_DICT=   {(0, 0): 'CRE_g_unscaled',
-#                (0, 1): 'CRE_W1-fixBA_unscaled',
-#                (1, 0): 'CN_g_unscaled',
-#                (1, 1): 'CN_W1-fixBA_unscaled',
-#                (2, 0): 'Size Ratio',
-#                (2, 1): 'NUV_r',
-#                (3, 0): 'W1_W3'}
-
 LAYOUT_DICT=   {(0, 0): 'CRE_g_unscaled',
                 (0, 1): 'CRE_W1-fixBA_unscaled',
-                (0, 2): 'CRE_W3-fixBA_unscaled',
                 (1, 0): 'CN_g_unscaled',
                 (1, 1): 'CN_W1-fixBA_unscaled',
-                (1, 2): 'CN_W3-fixBA_unscaled',
                 (2, 0): 'Size Ratio',
                 (2, 1): 'NUV_r',
-                (2, 2): 'W1_W3'}
+                (3, 0): 'W1_W3'}
+
+#LAYOUT_DICT=   {(0, 0): 'CRE_g_unscaled',
+#                (0, 1): 'CRE_W1-fixBA_unscaled',
+#                (0, 2): 'CRE_W3-fixBA_unscaled',
+#                (1, 0): 'CN_g_unscaled',
+#                (1, 1): 'CN_W1-fixBA_unscaled',
+#                (1, 2): 'CN_W3-fixBA_unscaled',
+#                (2, 0): 'Size Ratio',
+#                (2, 1): 'NUV_r',
+#                (2, 2): 'W1_W3'}
 
 
 #set to True for the script to create raincloud plots showing the distribution of the galaxy features
 #for each feature group. 
 #COMPANION TO FEATURE_LIST
-PLOT_RAINCLOUDS=True
+PLOT_RAINCLOUDS=False
 
 #the feature list dictionary to dictate what features are included in the raincloud plots above. if None, will default to using W1, W3, g-band Re+nser, as well as Size Ratio, NUV-r, and W1-W3.
 #must be a python list, with elements written as strings and reflecting actual column names in the input data table.

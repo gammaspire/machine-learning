@@ -21,7 +21,11 @@ def read_phot_tables():
     #extinction corrections
     ext = Table.read('data/vf_v2_extinction.fits')['A(NUV)_SandF', 'A(R)_SandF',
                                                    'A(W1)_SandF', 'A(W3)_SandF']
-    return phot, ext
+    #snr column
+    snr = Table.read('data/virgowise_data.fits')['SNR_phot']
+    
+    
+    return phot, ext, snr
 
 
 #yes, I read the environment table twice. I like organization. cope.
@@ -91,9 +95,9 @@ def make_galfit_table(params, colors=False):
     data_table['Size Ratio'] = data_table['CRE_W3-fixBA'] / data_table['CRE_W1-fixBA']
     
     #add NUV-r, W1-W3 colors
-    phot, ext = read_phot_tables()
+    phot, ext, snr = read_phot_tables()
     NUV_r, W1_W3 = get_photometric_colors(phot, ext)   #from conversion_utils
-    data_table.add_columns([NUV_r,W1_W3], names=['NUV_r','W1_W3'])
+    data_table.add_columns([NUV_r,W1_W3,snr], names=['NUV_r','W1_W3','SNR'])
     
     data_table = data_table.to_pandas()
 
@@ -136,6 +140,9 @@ def trim_galfit_table(full_df, params):
     
     #apply vcosmic limit (TEST)
     #full_df = full_df.loc[~(full_df['Vcosmic']<2000.)]
+    
+    #apply W3 SNR limit (TEST)
+    #full_df = full_df.loc[~(full_df['SNR']<10.)]
     
     #if magnitude colors are in the list of features, then we have to apply
     #a quality flag here too. This amount to just dropping the NaNs
@@ -210,6 +217,62 @@ def standardize_data(df, features):
     df = pd.concat([df, unscaled], axis=1)
     
     #ANNNNNND return
+    return df
+
+
+###################################
+# REASSIGN K-MEANS CLUSTER LABELS #
+###################################
+
+def k_reassignment(feature_data)
+    '''
+    AIM: for k=3 clusters, there is a set color/marker palette cadence I would like to follow. This cadence is often not met despite the marker_palette() function in plotting_utils.py, since the k assignment may change with changed parameters or feature inputs. FG1 will forever be seagreen, but both may be assigned to a completely different cluster of galaxies. I want FG1 - seagreen - suppressed galaxy population, and thus this function was born.
+    
+    * Must be run AFTER k-means clustering!
+    * Will only run on k=3 model labels
+    * Rules:
+        * 'suppressed galaxy population' --> smallest np.median('Size Ratio') --> FG1
+        * Of the remaining two:
+            * most massive population --> largest np.median('CRE_g') --> FG2
+            * least massive population --> smallest np.median('CRE_g') --> FG0
+    '''
+    
+    #define the clusters, TYPICALLY (0,1,2)
+    clusters = sorted(df['Feature Cluster'].unique())
+    
+    #only run if k=3 AND k-means clustering has already run
+    if (len(clusters)!=3) or ('Feature Cluster' not in feature_data.columns):
+        return
+    
+    #create clean copy of feature_data dataframe:
+    df = feature_data.copy()
+        
+    #calculate per-cluster medians
+    #groups df by Feature Cluster, calculates median of FG0, FG1, FG2 size ratio and cre_g
+    stats = (df.groupby('Feature Cluster')[['Size Ratio', 'CRE_g']].median())
+    
+    #identify the index where the minimum size ratio exists -- this is the "old" k-value for what will be FG1
+    fg1_old = stats['Size Ratio'].idxmin()
+
+    #isolate the remaining Feature Groups assuming they are not part of this suppressed population
+    remainder = [c for c in clusters if c != fg1_old]
+
+    #FG2 = larger median CRE_g among remainder
+    #FG0 = smaller
+    #pull the two stats rows with remainder indices; sort from lowest to highest; convert to indices; convert to list.
+    remainder_sorted = (stats.loc[remainder].sort_values('CRE_g', ascending=True).index.tolist())
+    
+    #determine the "old" k-values for what will be FG0 and FG2
+    fg0_old = remainder_sorted[0]   #smaller are all FG0 galaxies
+    fg2_old = remainder_sorted[1]   #larger are all FG2 galaxies
+
+    #create mapping dictionary!
+    mapping = {fg0_old: 0, fg1_old: 1, fg2_old: 2}
+
+    #add the mapping dictionary to df...
+    df['Feature Cluster'] = df['Feature Cluster'].map(mapping)
+
+    #and lastly, return the df.
     return df
 
 
