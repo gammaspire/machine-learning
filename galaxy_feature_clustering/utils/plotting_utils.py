@@ -554,6 +554,7 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
     #INITIATE
     fig, axes = plt.subplots(nrows=nrow, ncols=ncol, figsize=(fig_width, fig_height), constrained_layout=True)
     
+    print(axes)
     #read values from the dictionary, 
     for (i, j), med_label in layout_dict.items():        
 
@@ -836,3 +837,108 @@ def plot_dSFR_KDEs(feature_data):
         print('--------------------')
     
     return 
+
+
+#####################################################
+#####################################################
+# Plotting Feature Groups dSFR KDEs PER ENVIRONMENT #
+#####################################################
+#####################################################
+
+def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=False):
+    '''
+    AIM: Create individual panels of the KDE distributions of k Feature Groups separated by environment. 
+    This distribution is dictated by setting one of the following variables to True:
+        * dsfr = dlogSFR
+        * gser = g-band Sersic Index
+        * w1ser = W1 Sersic Index
+    If >1 is set to True, default will be dsfr, then w1ser. 
+    '''
+    
+    #from scipy.stats import ks_2samp
+    #from itertools import combinations
+
+    if dsfr:
+        prefix='delta_logsfr'
+        xlims=(-6,2)
+    elif w1ser:
+        prefix='CN_W1'
+        xlims=(0,5)
+    elif gser:
+        prefix='CN_g'
+        xlims=(0,5)
+    else:
+        print('Need to set dsfr, w1ser, or gser to True.')
+        return
+    
+    #create list of columns corresponding to the prefix set above
+    #[expression for item in iterable if condition]
+    columns = [n for n in feature_data.columns if prefix in n]
+    
+    #if no columnnames match the prefix or Feature Cluster not present, then we cannot run the function. derp.
+    if (len(columns)<1) or ('Feature Cluster' not in feature_data.columns):
+        print(f'Need {prefix} or its _unscaled variant in the input dataframe. Might also be missing "Feature Cluster" column.')
+        return
+        
+    #pull the "last" columnname. this will be the _unscaled variant of the prefix (if present) or whatever single
+    #columnname remains (if len(columns)==1)
+    colname = columns[-1]
+    
+    #using this, we can then create the xlabel. first, create LABEL dictionary
+    label_dict = make_label_dictionary()
+    
+    #next, define xaxis label.
+    xaxis_label = get_feature_label(colname, label_dict)
+
+    #color/marker bookkeeping...
+    colors, edgecolors, marker_shapes = marker_palette(feature_data)
+
+    #grab number of unique feature groups
+    k_clusters = np.sort(feature_data['Feature Cluster'].unique())
+
+    #drop noise label if present (k-means won't have it)
+    k_clusters = [k for k in k_clusters if k != -1]
+
+    #create bool flags for each k feature cluster
+    kflags = {k: (feature_data['Feature Cluster'] == k) for k in k_clusters}
+
+    #this will output a dictionary of environment names/labels and their corresponding boolean flags!
+    env_defs = make_env_defs(feature_data, main_only=main_only)
+    
+    #this next part is a bit tricky. we first define an array of empty strings ('', '', ...), but with an 
+    #optional maximum length of len(xaxis_label)
+    xlabels=np.zeros(len(env_defs), dtype=f'<U{len(xaxis_label)}')
+    #then, since we want the LAST set of axes only to have the xaxis label, we assign the label to the -1st index
+    #of the xlabels array
+    xlabels[-1]=xaxis_label
+    
+    #plotting time.
+    #first, the canvas. 1 column, len(env_defs) rows -- one per environment.
+    fig = plt.figure(figsize=(8,18))
+    plt.subplots_adjust(hspace=0.2)
+
+    #loop over environments (dict: env name -> boolean mask)
+    for n, (env_name, env_mask) in enumerate(env_defs.items()):
+        ax = fig.add_subplot(len(env_defs), 1, n+1)
+
+        for k in k_clusters:
+            #isolates all dlogsfr galaxies in FGk and the env_mask environment
+            dlogsfr = feature_data.loc[kflags[k] & env_mask, colname]
+
+            #skip if too few points to make a meaningful KDE
+            if len(dlogsfr) < 5:
+                continue
+
+            kde = sns.kdeplot(dlogsfr, color=colors[k], label=f'FG{k}', ax=ax)
+
+        ax.set_xlim(*xlims)
+        ax.set_xlabel(xlabels[n])
+        
+        #add environment label to the plot panel
+        ax.text(0.02, 0.95, env_name, transform=ax.transAxes, ha='left', va='top', fontsize=11)
+        
+        #for env==0 (first box), add legend.
+        if n == 0:
+            ax.legend(loc='upper right')
+
+    plt.show()

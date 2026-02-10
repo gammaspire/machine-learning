@@ -4,7 +4,7 @@
 
 def get_feature_names(params, colors=False):
     '''
-    AIM: return list of all feature names for specified parameters in, surprise, galfit_parameters.py
+    AIM: return list of all feature names for specified parameters in, surprise, init_parameters.py
     '''
     #define Re, Sersic index feature columns
     re_cols = [f'CRE_{band}' for band in params.BANDS_TO_CLUSTER]
@@ -57,14 +57,15 @@ def make_label_dictionary():
                     'CN_g': '[g] Sersic Index',
                     'CN_r': '[r] Sersic index',
                     'NUV_r': '[NUV-r]',
-                    'W1_W3': '[W1-W3]'}
+                    'W1_W3': '[W1-W3]',
+                    'delta_logsfr': '$\Delta$logSFR'}
     
     return feature_dict
 
 
-###############################################
-# HELPER FUNCTION FOR APPLYING THE DICTIONARY #
-###############################################
+#####################################################
+# HELPER FUNCTION FOR APPLYING THE LABEL DICTIONARY #
+#####################################################
 
 def get_feature_label(colname, label_dict):
     """

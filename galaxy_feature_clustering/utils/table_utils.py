@@ -224,7 +224,7 @@ def standardize_data(df, features):
 # REASSIGN K-MEANS CLUSTER LABELS #
 ###################################
 
-def k_reassignment(feature_data)
+def k_reassignment(feature_data):
     '''
     AIM: for k=3 clusters, there is a set color/marker palette cadence I would like to follow. This cadence is often not met despite the marker_palette() function in plotting_utils.py, since the k assignment may change with changed parameters or feature inputs. FG1 will forever be seagreen, but both may be assigned to a completely different cluster of galaxies. I want FG1 - seagreen - suppressed galaxy population, and thus this function was born.
     
@@ -238,7 +238,7 @@ def k_reassignment(feature_data)
     '''
     
     #define the clusters, TYPICALLY (0,1,2)
-    clusters = sorted(df['Feature Cluster'].unique())
+    clusters = sorted(feature_data['Feature Cluster'].unique())
     
     #only run if k=3 AND k-means clustering has already run
     if (len(clusters)!=3) or ('Feature Cluster' not in feature_data.columns):
