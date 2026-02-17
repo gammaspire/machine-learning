@@ -1,0 +1,27 @@
+#
+the checkpoint hoohaw
+.ipynb_checkpoints/
+/predicting_M200/.ipynb_checkpoints/
+
+# the pycache hoohaw
+/predicting_M200/__pycache__
+/predicting_M200/scripts/__pycache__
+/galaxy_feature_clustering/__pycache__
+/galaxy_feature_clustering/utils/__pycache__
+
+
+# the...(Nintendo) .DS_Store?
+.DS_Store
+
+# for now, OSRS data directory
+/osrs_star_spawns
+
+# the galaxy clustering PDFs directory
+/galaxy_feature_clustering/pdfs
+
+# the galaxy clustering images directory
+/galaxy_feature_clustering/data/images
+
+# generated outputs
+*.pdf
+**/pdfs/
