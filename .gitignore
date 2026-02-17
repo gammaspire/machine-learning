@@ -9,7 +9,10 @@ the checkpoint hoohaw
 /predicting_M200/scripts/__pycache__
 /galaxy_feature_clustering/__pycache__
 /galaxy_feature_clustering/utils/__pycache__
+/galaxy_feature_clustering/stability_tests/__pycache__
 
+# some .idea directory, whatever that is.
+/galaxy_feature_clustering/.idea
 
 # the...(Nintendo) .DS_Store?
 .DS_Store
