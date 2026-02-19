@@ -102,6 +102,9 @@ def make_galfit_table(params, colors=False):
     NUV_r, W1_W3 = get_photometric_colors(phot, ext)   #from conversion_utils
     data_table.add_columns([NUV_r,W1_W3,snr], names=['NUV_r','W1_W3','SNR'])
     
+    #using W3 SNR, add a column that flags galaxies with W3 SNR > 5 (needed for PDF files, evaluating SFR trends)
+    data_table['SNR_flag'] = data_table['SNR']>5
+    
     data_table = data_table.to_pandas()
 
     #append environment columns
@@ -143,7 +146,7 @@ def trim_galfit_table(full_df, params):
     full_df = completeness_limits(full_df, params.LOGMSTAR_LIM, params.LOGSFR_LIM)
     
     #apply W3 SNR limit (TEST)
-    #full_df = full_df.loc[~(full_df['SNR']<10.)]
+    full_df = full_df.loc[~(full_df['SNR']<=5.)]
     
     #apply inclination cut (remove galaxies with B/A < 0.25)
     full_df = full_df.loc[full_df['Axis Ratio']>=0.25]
@@ -307,10 +310,10 @@ def create_median_table(feature_data, features):
 
             #isolate the feature from the cluster_id data
             arr = df_cluster[feature].values
-
+            
             #calculate the median and lower+upper bootstrap confidence intervals
             med = np.median(arr)
-            low, high = get_bootstrap_confint(arr)
+            low, high = get_bootstrap_confint(arr, nboot=10000)
 
             #store median + error in the row set for that feature cluster
             row[feature] = med

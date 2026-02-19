@@ -63,11 +63,13 @@ BANDS are simply all bands that I want in the dataframe.
 BANDS=['g','r','W1-fixBA','W2','W3-fixBA']            #ALL bands
 BANDS_TO_CLUSTER=['g','W1-fixBA']      #bands that are considered for the clustering algorithm
 
-COLUMNS=['CXC','CRE','CN','CNumerical_Error']   #NOTE THESE ARE FEATURE LABELS ARE LATER CHANGED
-                                                #CRE --> Effective Radius
-                                                #CN --> Sersic Index
-                                                #CXC --> central x-pixel (used to diagnose whether GALFIT model crashed)
-                                                #CNumerical Error --> a flag indicating the robustness of the GALFIT model
+COLUMNS=['CXC','CRE','CN','CNumerical_Error','CCHI2NU'] #NOTE THESE ARE FEATURE LABELS ARE LATER CHANGED
+                                                        #CRE --> Effective Radius
+                                                        #CN --> Sersic Index
+                                                        #CXC --> central x-pixel (used to diagnose whether GALFIT model crashed)
+                                                        #CNumerical Error --> a flag indicating the robustness of the GALFIT model
+                                                        #CCHI2NU --> reduced chi-squared of the model fit
+                                                            
 #pixel to arcsec conversion scale
 PSCALE={'g':0.262,'r':0.262,'z':0.262,
         'W1':2.75,'W1-fixBA':2.75,
@@ -112,7 +114,7 @@ The desired k limit for clipping outliers from the data distribution via interqu
         #any points not in this bloated IQR are outliers. goodbye outliers.
 * set to None to include full range of parameters.
 '''
-IQRCLIP=1.5
+IQRCLIP=10
 
 #number of clusters to use for kmeans
 #if you want the code to optimize k using the silhouette method, set K=None

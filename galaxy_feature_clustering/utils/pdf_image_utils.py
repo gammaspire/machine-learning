@@ -34,9 +34,9 @@ def legacy_link(ra,dec,size=256,pixscale=0.7,layer='ls-dr9'):
     return f"https://www.legacysurvey.org/viewer/cutout.jpg?ra={ra}&dec={dec}&layer={layer}&size={size}&pixscale={pixscale}"
 
 
-############################################################################
-# BELOW ARE OBSOLETE FUNCTIONS TO PULL+SAVE OPTICAL .JPG FOR VFID GALAXIES #
-############################################################################
+##################################################################
+# OBSOLETE FUNCTIONS TO PULL+SAVE OPTICAL .JPG FOR VFID GALAXIES #
+##################################################################
 
 def remove_ls_jpg(vfid):
     '''
@@ -245,23 +245,37 @@ def create_figure(df_subset, ncol=4, nrow=4, page_dict=None):
         
         #add VFID, RA, DEC text (upper left)
         ax.text(0.05, 0.95, f"{vfid}\n\nRA = {df_subset['RA'][ind]:.3f}\nDEC = {df_subset['DEC'][ind]:.3f}", 
-            transform=ax.transAxes, 
-            fontsize=12, 
-            color='white',
-            fontweight='bold',
-            va='top',
-            ha='left',
-            bbox=dict(facecolor='black', alpha=0.3))
+                transform=ax.transAxes, 
+                fontsize=12, 
+                alpha=0.95,
+                color='white',
+                fontweight='bold',
+                va='top',
+                ha='left',
+                bbox=dict(facecolor='black', alpha=0.3))
         
         #add kcluster text (bottom left)
         ax.text(0.05, 0.05, f"Feature Group {df_subset['Feature Cluster'][ind]}", 
-            transform=ax.transAxes, 
-            fontsize=12, 
-            color='white',
-            fontweight='bold',
-            va='bottom',
-            ha='left',
-            bbox=dict(facecolor='black', alpha=0.3))
+                transform=ax.transAxes, 
+                fontsize=12,
+                alpha=0.95,
+                color='white',
+                fontweight='bold',
+                va='bottom',
+                ha='left',
+                bbox=dict(facecolor='black', alpha=0.3))
+        
+        #add red X to lower right of the image if the galaxy does not meet the W3 SFR > 5 condition.
+        if ~df_subset['SNR_flag'][ind]:
+            ax.text(0.95, 0.05, '(SNR$_{W3}$<5)',
+                    transform=ax.transAxes,
+                    fontsize=20,
+                    alpha=0.7,
+                    color='r',
+                    fontweight='bold',
+                    va='bottom',
+                    ha='right',
+                    bbox=dict(facecolor='black',alpha=0.3))
         
         #if there is no page_dict, delete the saved jpg (no longer needed).
         if page_dict is None:

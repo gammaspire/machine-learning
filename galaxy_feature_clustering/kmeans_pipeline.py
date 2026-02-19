@@ -124,7 +124,7 @@ def run_kmeans(colors=False, save_table=True):
         
     if save_table:
         loc = os.path.join(os.getcwd(), 'data/kmeans_median_features.csv')
-        print(f"\n A summary of feature cluster median properties saved to {loc}:")
+        print(f"\n A summary of feature cluster median properties saved to {loc}.")
         cluster_summary.to_csv(loc, index=False)
 
     if params.PLOT_MEDIANS:

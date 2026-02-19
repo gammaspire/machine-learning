@@ -8,7 +8,7 @@ import numpy as np
 # MODIFIED BOOTSTRAP FUNCTION, COURTESY OF RFINN  #
 ###################################################
 
-def get_bootstrap_confint(d, bootfunc=np.median, nboot=2000):
+def get_bootstrap_confint(d, bootfunc=np.median, nboot=2000, seed=42):
     
     from astropy.stats import bootstrap
     
@@ -20,6 +20,10 @@ def get_bootstrap_confint(d, bootfunc=np.median, nboot=2000):
         -create nboot resamplings of the data and calculate the bootfunc of each resample.
         -will return the e.g. median for each of the nboot resamples
     '''
+    
+    if seed is not None:
+        np.random.seed(seed)
+    
     bootsamp = bootstrap(d,bootfunc=bootfunc,bootnum=nboot)
 
     # sort the bootstrap sampled medians

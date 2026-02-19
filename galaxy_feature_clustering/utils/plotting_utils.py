@@ -278,7 +278,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
                 #the average of this, in fact, IS the subset / total fraction!
                 subset_data = (env['Feature Cluster'].values == k_cluster).astype(int)
                 
-                title_ = 'Feature Group Composition Within each Envirionment'
+                title_ = 'Feature Group Composition Within each Environment'
                 ylim1 = 0
                 ylim2 = 0.7
             
@@ -554,7 +554,6 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
     #INITIATE
     fig, axes = plt.subplots(nrows=nrow, ncols=ncol, figsize=(fig_width, fig_height), constrained_layout=True)
     
-    print(axes)
     #read values from the dictionary, 
     for (i, j), med_label in layout_dict.items():        
 
