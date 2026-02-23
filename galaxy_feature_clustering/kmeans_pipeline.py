@@ -67,26 +67,32 @@ def run_kmeans(colors=False, save_table=True):
     features = get_feature_names(params=params, colors=colors)
         
     print(f'USING THESE FEATURES: {features}')
+    
+    #add color flag to params class
+    params.colors = colors
       
     if params.LOADTABLE:
         print(f'Reading feature data from {params.KMEANS_DF_PATH}...')
         df_scaled = pd.read_csv(params.KMEANS_DF_PATH, na_values=['', ' '])
-
+    
     else:
         #generate the dataframe
-        df_full = make_galfit_table(params, colors=colors)  
+        df_full = make_galfit_table(params)  
         
         #trim the table. remove the errors and unphysical data.
         df_trimmed = trim_galfit_table(df_full, params)
 
         #convert effective radii (px) to effective radii (kpc)
         df_trimmed = get_kpc_columns(df_trimmed, params)
-        
+                
         if params.IQRCLIP is not None:
             #remove pesky outliers that lie beyond 3-sigma of their respective features' means
             df_clipped = iqr_clipping(df_trimmed, features, k_clip=params.IQRCLIP)
+            message = f'Alert! Removed {len(df_trimmed) - len(df_clipped)} galaxies after IQR Clipping!'
         else:
             df_clipped = df_trimmed.copy()
+        
+        print(message)
         
         #scale the feature data.
         df_scaled = standardize_data(df_clipped, features)
@@ -161,7 +167,7 @@ def run_kmeans(colors=False, save_table=True):
         plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=True)
         
         #this plot is a histogram companion to envcomp=True
-        plot_env_stacked_hist(feature_data, main_only=False)
+        #plot_env_stacked_hist(feature_data, main_only=False)
         
     #also self-explanatory. collected. uninhibited.
     if params.PLOT_SFRMSTAR:

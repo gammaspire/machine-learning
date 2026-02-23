@@ -48,12 +48,16 @@ def iqr_clipping(df, features, k_clip=1.5):
     '''
     AIM: perform interquartile range clipping. 
     k_clip=1.5 has a Gaussian equivalent of roughly 2.7-sigma
-    k_clip=2.5 has a Gaussian equivalent of roughly 3-sigma
+    k_clip=2.5 has a Gaussian equivalent of roughly 4-sigma
     ''' 
     df = df.copy()
     
-    Q1 = df[features].quantile(0.25)   #find 25% quartile of data distributions
-    Q3 = df[features].quantile(0.75)   #find 75% quartile of data distributions
+    # work in log10-space for strictly positive structural parameters
+    df_log = df[features].copy()
+    df_log = np.log10(df_log)
+    
+    Q1 = df_log.quantile(0.25)   #find 25% quartile of data distributions
+    Q3 = df_log.quantile(0.75)   #find 75% quartile of data distributions
     
     #find the range of data values between these two bounds
     IQR = Q3 - Q1
@@ -61,12 +65,18 @@ def iqr_clipping(df, features, k_clip=1.5):
     #generate mask --> data must not be beyond some multiple of the IQR width
     #the Q1-... and Q3+... just expand the endpoints of IQR outward such that the "new" IQR
     #is k-times the original IQR size.
-    outlier_mask = ((df[features] < (Q1 - k_clip * IQR)) | (df[features] > (Q3 + k_clip * IQR))).any(axis=1)
+    outlier_mask = ((df_log < (Q1 - k_clip * IQR)) | (df_log > (Q3 + k_clip * IQR))).any(axis=1)
+        
+    excluded = df.loc[outlier_mask]
+
+    print(f"IQR clipping (k_clip={k_clip}): "
+          f"Removing {outlier_mask.sum()}/{len(df)} galaxies "
+          f"({outlier_mask.mean():.1%})")
+
+    print("Excluded VFIDs:")
+    print(excluded['VFID'].values)
     
-    print(f"IQR clipping (k={k_clip}): Removing an additional {outlier_mask.sum()}/{len(outlier_mask)} outliers ({outlier_mask.mean():.1%})")
-    print(f"Remaining galaxies: {len(df) - outlier_mask.sum()}")
-    
-    return df[~outlier_mask]
+    return df.loc[~outlier_mask]
 
 
 ##########################################################
@@ -150,4 +160,3 @@ def get_delta_logsfr(mstar_array, sfr_array, m, b):
     delta_sfr = sfr_array - logSFR_MS
     
     return delta_sfr
-    

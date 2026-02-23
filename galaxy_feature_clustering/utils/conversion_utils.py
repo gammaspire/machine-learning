@@ -149,3 +149,20 @@ def get_photometric_colors(phot, ext):
     W1_W3 = phot[f'mAB_W1'] - phot['mAB_W3'] 
 
     return NUV_r, W1_W3
+
+
+###############################################
+# CALCULATE SNR FROM FLUX SIGNAL, IVAR ARRAYS #
+###############################################
+
+def calculate_SNR(signal_array, ivar_array):
+    '''
+    Aim: calculate the SNR for an array of input fluxes and inverse variances.
+    * This function will convert ivar_array to a noise array, then evaluate SNR.
+    * Returns a row-matched array of SNR for the given wavelength band.
+    '''
+    
+    noise_array = 1/np.sqrt(ivar_array)
+    snr = signal_array/noise_array
+    
+    return snr

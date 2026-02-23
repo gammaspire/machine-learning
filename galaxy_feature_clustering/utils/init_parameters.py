@@ -60,16 +60,16 @@ z-band table is entirely empty. all zeros and False bools. as such, the band is 
 Combined, COLUMNS & BANDS_TO_CLUSTER comprise the columns used in the clustering algorithm.
 BANDS are simply all bands that I want in the dataframe.
 '''
-BANDS=['g','r','W1-fixBA','W2','W3-fixBA']            #ALL bands
-BANDS_TO_CLUSTER=['g','W1-fixBA']      #bands that are considered for the clustering algorithm
+BANDS=['g','r','W1-fixBA','W3-fixBA']  #ALL (GALFIT) bands
+BANDS_TO_CLUSTER=['g','W1-fixBA']      #(GALFIT) bands that are considered for the clustering algorithm
 
-COLUMNS=['CXC','CRE','CN','CNumerical_Error','CCHI2NU'] #NOTE THESE ARE FEATURE LABELS ARE LATER CHANGED
+COLUMNS=['CRE','CN','CXC','CNumerical_Error','CRE_ERR', 'CN_ERR'] #NOTE THESE FEATURE LABELS ARE LATER CHANGED
                                                         #CRE --> Effective Radius
                                                         #CN --> Sersic Index
-                                                        #CXC --> central x-pixel (used to diagnose whether GALFIT model crashed)
+                                                        #CXC --> central x pixel; used to diagnose whether GALFIT ran
                                                         #CNumerical Error --> a flag indicating the robustness of the GALFIT model
-                                                        #CCHI2NU --> reduced chi-squared of the model fit
-                                                            
+                                                        #CRE_ERR --> model error for CRE
+                                                        #CN_ERR --> model error for CN
 #pixel to arcsec conversion scale
 PSCALE={'g':0.262,'r':0.262,'z':0.262,
         'W1':2.75,'W1-fixBA':2.75,
@@ -114,7 +114,7 @@ The desired k limit for clipping outliers from the data distribution via interqu
         #any points not in this bloated IQR are outliers. goodbye outliers.
 * set to None to include full range of parameters.
 '''
-IQRCLIP=10
+IQRCLIP=1.5
 
 #number of clusters to use for kmeans
 #if you want the code to optimize k using the silhouette method, set K=None
@@ -220,6 +220,7 @@ class Params():
         self.BANDS = BANDS
         self.BANDS_TO_CLUSTER = BANDS_TO_CLUSTER
         self.COLUMNS = COLUMNS
+        
         self.PSCALE = PSCALE
         self.LOGSFR_LIM = LOGSFR_LIM
         self.LOGMSTAR_LIM = LOGMSTAR_LIM

@@ -8,23 +8,29 @@ from astropy.table import Table
 import numpy as np
 import pandas as pd
 
-from conversion_utils import get_photometric_colors
+from conversion_utils import get_photometric_colors, calculate_SNR
 
 ##############################
 # GET COLUMN AND TABLE NAMES #
-##############################
+##############################    
+
 
 def read_phot_tables():
+    
     #needed NUV, R, W1, W3 photometric fluxes (in nanomaggies)
-    phot = Table.read('data/vf_v2_legacy_ephot.fits')['FLUX_AP06_NUV','FLUX_AP06_R',
-                                                       'FLUX_AP06_W1','FLUX_AP06_W3']
+    flux_cols = ['FLUX_AP06_NUV', 'FLUX_AP06_W3',
+                 'FLUX_AP06_R', 'FLUX_AP06_W1']
+    
+    #grab the W3, NUV ivar columns (also in nanomaggies)
+    ivar_cols = ['FLUX_IVAR_AP06_NUV', 'FLUX_IVAR_AP06_W3']  
+    
+    phot = Table.read('data/vf_v2_legacy_ephot.fits')[flux_cols+ivar_cols]   
+    
     #extinction corrections
     ext = Table.read('data/vf_v2_extinction.fits')['A(NUV)_SandF', 'A(R)_SandF',
                                                    'A(W1)_SandF', 'A(W3)_SandF']
-    #snr column
-    snr = Table.read('data/virgowise_data.fits')['SNR_phot']
     
-    return phot, ext, snr
+    return phot, ext
 
 
 #yes, I read the environment table twice. I like organization. cope.
@@ -50,16 +56,11 @@ def get_stellar_columns():
     cigale = Table.read('data/cigale_vf_metallicity.fits')
     mstar = np.log10(cigale['bayes.stellar.m_star'])
     sfr = np.log10(cigale['bayes.sfh.sfr'])
-    
-    #magphys = Table.read('data/vf-altphot.fits')
-    #mstar = magphys['combined_logMstar_med']
-    #sfr = magphys['combined_logSFR_med']
-    
+
     #before ANY trimming is applied to the data,
     #determine the main sequence line fit to log(ssfr)>-11.5 galaxies
     m, b = get_ms_line(mstar,sfr)
     delta_sfr = get_delta_logsfr(mstar, sfr, m, b)
-    
     
     return mstar, sfr, delta_sfr
 
@@ -68,7 +69,7 @@ def get_stellar_columns():
 # INITIALIZE THE FEATURE TABLE #
 ################################
 
-def make_galfit_table(params, colors=False):
+def make_galfit_table(params):
     '''
     Read GALFIT grz, W1-4 output tables
         * If colors=True, will include NUV-r, W1-W3 colors
@@ -83,7 +84,7 @@ def make_galfit_table(params, colors=False):
         t = Table.read(f'data/vf_v2_galfit_{band}.fits')
         for colname in params.COLUMNS:
             data_table[f'{colname}_{band}'] = t[colname]
-            
+                        
             #if r-band, pull the axis ratio!
             if band=='r':
                 data_table[f'Axis Ratio'] = t['CAR']
@@ -98,12 +99,13 @@ def make_galfit_table(params, colors=False):
     data_table['Size Ratio'] = data_table['CRE_W3-fixBA'] / data_table['CRE_W1-fixBA']
     
     #add NUV-r, W1-W3 colors
-    phot, ext, snr = read_phot_tables()
+    phot, ext = read_phot_tables()
     NUV_r, W1_W3 = get_photometric_colors(phot, ext)   #from conversion_utils
-    data_table.add_columns([NUV_r,W1_W3,snr], names=['NUV_r','W1_W3','SNR'])
+    data_table.add_columns([NUV_r,W1_W3], names=['NUV_r','W1_W3'])
     
-    #using W3 SNR, add a column that flags galaxies with W3 SNR > 5 (needed for PDF files, evaluating SFR trends)
-    data_table['SNR_flag'] = data_table['SNR']>5
+    #add SNR columns!
+    data_table['SNR_W3'] = calculate_SNR(phot['FLUX_AP06_W3'], phot['FLUX_IVAR_AP06_W3'])
+    data_table['SNR_NUV'] = calculate_SNR(phot['FLUX_AP06_NUV'], phot['FLUX_IVAR_AP06_NUV'])
     
     data_table = data_table.to_pandas()
 
@@ -112,6 +114,26 @@ def make_galfit_table(params, colors=False):
     data_table = pd.concat([data_table.copy(), envflags.copy()],axis=1)
 
     return data_table
+
+
+def trim_colors(df, color_cols=['NUV_r','W1_W3'], print_=True):
+    '''
+    AIM: Mask the input Pandas dataframe to remove galaxy rows with illegitimate color magnitudes. 
+    * Used for trim_galfit_table() and in plotting_utils.py
+    * color_cols is to be a list of strings identifying the relevant column names.
+    '''
+    
+    #isolate the length of the dataframe before the mask
+    ngal_before_cut = len(df)
+
+    #create a mask which isolates the rows with FINITE color magnitudes
+    mask = np.isfinite(df[color_cols]).all(axis=1)
+    df_masked = df[mask]
+
+    if print_:
+        print(f'ALERT! Removed {ngal_before_cut - len(df_masked)} after vetting inf/-inf photometric entries.')
+    
+    return df_masked
 
 
 #######################################################
@@ -123,52 +145,56 @@ def trim_galfit_table(full_df, params):
     Apply trimming flags -- non-data, Re, nser, numerical error
     '''
     
-    #unfortunately have to trim any row which has at least one of the below problems.
+    #unfortunately have to trim any row which has at least one of the below "problems."
     
     ngal_before = len(full_df)
     
     #center x-position, Nser, numerical error columns
-    xyc_cols = [f'CXC_{band}' for band in params.BANDS_TO_CLUSTER]
     nser_cols = [f'CN_{band}' for band in params.BANDS_TO_CLUSTER]
+    re_cols = [f'CRE_{band}' for band in params.BANDS_TO_CLUSTER]
+    xc_cols = [f'CXC_{band}' for band in params.BANDS_TO_CLUSTER]
     numerr_cols = [f'CNumerical_Error_{band}' for band in params.BANDS_TO_CLUSTER]
     
-    #drop row if any central x pixel coordinate cell is zero
-    full_df = full_df.loc[~(full_df[xyc_cols]==0).any(axis=1)]
+    #drop row if any nser or re model value is zero (indicates the model did not finish)
+    zero_flag = (full_df[xc_cols]==0)
+    df_one = full_df.loc[~(zero_flag).any(axis=1)]
+    print(f'ALERT! Removing {len(full_df)-len(df_one)} galaxies with no GALFIT fit.')
         
     #drop rows with any nser > 6.
-    full_df = full_df.loc[~(full_df[nser_cols]>6).any(axis=1)]
+    df_two = df_one.loc[~(df_one[nser_cols]>6).any(axis=1)]
+    print(f'ALERT! Removing {len(df_one) - len(df_two)} with GALFIT nser > 6 in one of the bands used for k-means clustering.')
         
     #drop rows with any convolved numerical error
-    full_df = full_df.loc[~(full_df[numerr_cols]).any(axis=1)]
+    df_three = df_two.loc[~(df_two[numerr_cols]).any(axis=1)]
+    print(f'ALERT! Removing {len(df_two) - len(df_three)} with a GALFIT numerical error.')
     
     #apply the logMstar, logSFR completeness limit flags. 
     #note: if either or both set to None in init_parameters.py, then this function will do nothing.
-    full_df = completeness_limits(full_df, params.LOGMSTAR_LIM, params.LOGSFR_LIM)
+    df_four = completeness_limits(df_three, params.LOGMSTAR_LIM, params.LOGSFR_LIM)
+    print(f'ALERT! Removing {len(df_three) - len(df_four)} which do not pass any Mstar, SFR completeness limits specified in init_parameters.txt')
     
-    #apply W3 SNR limit (TEST)
-    full_df = full_df.loc[~(full_df['SNR']<=5.)]
+    #apply W3, NUV SNR limit
+    snr_limit = (df_four['SNR_W3']>=5.) | (df_four['SNR_NUV']>=5.)
+    print(f'ALERT! Removed {np.sum(~snr_limit)} galaxies after applying the W3, NUV SNR limit!')
+    df_five = df_four.loc[snr_limit]
     
     #apply inclination cut (remove galaxies with B/A < 0.25)
-    full_df = full_df.loc[full_df['Axis Ratio']>=0.25]
+    df_six = df_five.loc[df_five['Axis Ratio']>=0.25]
+    print(f'ALERT! Removed {len(df_five) - len(df_six)} galaxies after applying the inclination cut.')
         
     #if magnitude colors are in the list of features, then we have to apply
-    #a quality flag here too. This amount to just dropping the NaNs
-    if 'NUV_r' in full_df.columns:
-        
-        #filter out non-finite numeric values (inf/-inf)
-        full_df = full_df[np.isfinite(full_df.select_dtypes(include=[np.number])).all(axis=1)]
-        
-        message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with GALFIT, completeness limit, inclination, and PHOT quality flags.'
+    #a quality flag here too. This amount to just dropping the non-finite/unphysical/fake news values
+    if params.colors:
+        df_six = trim_colors(df_five)
     
-    else:
-        message=f'Removed {ngal_before - len(full_df)}/{ngal_before} galaxies with completeness limit, inclination, and GALFIT quality flags.'        
+    message=f'Removed {ngal_before - len(df_six)}/{ngal_before}  galaxies in total.'        
     
     print('#'*len(message))
     print(message)
     print('#'*len(message))
     
     #return the 'cleansed' dataframe
-    return full_df
+    return df_six
 
 
 ###########################################
@@ -204,8 +230,9 @@ def completeness_limits(trimmed_df, mstar_limit=None, sfr_limit=None):
 
 def standardize_data(df, features):
     '''
-    Standardize data features such that each column has a mean of 0 and a standard deviation of 1.
-    output: edited pandas dataframe with input columns standardized, scaler object
+    Standardize data features such that each column has a median of 0 
+    and is scaled by the interquartile range (robust to outliers).
+    output: edited pandas dataframe with input columns standardized
     '''
     from sklearn.preprocessing import StandardScaler
     
@@ -223,7 +250,6 @@ def standardize_data(df, features):
     #concatenate the transformed features with the unscaled features!
     df = pd.concat([df, unscaled], axis=1)
     
-    #ANNNNNND return
     return df
 
 
@@ -307,13 +333,17 @@ def create_median_table(feature_data, features):
 
         #now, for every (unscaled) feature...
         for feature in features_unscaled:
-
+            
+            #if features are the magnitude colors, be sure to exclude invalid values
+            if feature in ['NUV_r', 'W1_W3']:
+                df_cluster = trim_colors(df_cluster.copy(), print_=False)
+            
             #isolate the feature from the cluster_id data
             arr = df_cluster[feature].values
             
             #calculate the median and lower+upper bootstrap confidence intervals
             med = np.median(arr)
-            low, high = get_bootstrap_confint(arr, nboot=10000)
+            low, high = get_bootstrap_confint(arr, nboot=5000)
 
             #store median + error in the row set for that feature cluster
             row[feature] = med

@@ -167,11 +167,11 @@ def plot_pca_components(feature_data, features, pca, cmap_name='tab20'):
     plt.show()
 
 
-##############################################
-##############################################
-# Plotting Feature Group Physical Properties #
-############################################## 
-##############################################
+#################################################
+#################################################
+# Plotting Feature Group Environment Properties #
+#################################################
+#################################################
     
 def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=False):
     '''
@@ -280,7 +280,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
                 
                 title_ = 'Feature Group Composition Within each Environment'
                 ylim1 = 0
-                ylim2 = 0.7
+                ylim2 = 0.80
             
             ########
             # BOTH #
@@ -585,7 +585,7 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
         if 'CN' in med_label:
             ylims = nser_ylim
             if nser_ylim is None:
-                ylims = (0.0,2.5)
+                ylims = (0.0,4)
         elif 'CRE' in med_label:
             ylims = re_ylim
             if re_ylim is None:
@@ -605,7 +605,7 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
         ax.set_ylabel(get_feature_label(med_label, label_dict))   #need the fancy schmancy name!
         ax.grid(alpha=0.1)
         
-    #lastly...remove axes not used in the layout_dict
+    #lastly...remove axes not used in the layout_dic\\
     used_axes = set(layout_dict.keys())
 
     for i in range(nrow):
