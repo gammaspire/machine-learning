@@ -185,6 +185,12 @@ def get_page_images_parallel(df_subset, max_workers=2):
     return imgs
 
 
+#######################################################
+#######################################################
+# Generate Optical/W1 images in 4x4 grid for PDF page #
+#######################################################
+#######################################################
+
 def create_figure(df_subset, ncol=4, nrow=4, page_dict=None):
     '''
     pseudocode:
@@ -194,6 +200,9 @@ def create_figure(df_subset, ncol=4, nrow=4, page_dict=None):
         - load image data for that galaxy
         - add image to axis set
         - include VFID label in image
+    * If page_dict is None, function will assume that the jpgs are saved to disk
+    * If page_dict is not None, then function will read the numpy matrix associated with the galaxy VFID
+        * this matrix is a horizontal concatenation of the optical and W1 images taken from the Legacy Survey
     '''
     
     if len(df_subset)>ncol*nrow:

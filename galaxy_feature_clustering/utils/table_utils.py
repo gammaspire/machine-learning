@@ -22,9 +22,12 @@ def read_phot_tables():
                  'FLUX_AP06_R', 'FLUX_AP06_W1']
     
     #grab the W3, NUV ivar columns (also in nanomaggies)
-    ivar_cols = ['FLUX_IVAR_AP06_NUV', 'FLUX_IVAR_AP06_W3']  
+    ivar_cols = ['FLUX_IVAR_AP06_NUV', 'FLUX_IVAR_AP06_W3'] 
     
-    phot = Table.read('data/vf_v2_legacy_ephot.fits')[flux_cols+ivar_cols]   
+    #also grab RA, DEC columns. :-)
+    radec_cols = ['RA_MOMENT', 'DEC_MOMENT']
+    
+    phot = Table.read('data/vf_v2_legacy_ephot.fits')[flux_cols+ivar_cols+radec_cols]   
     
     #extinction corrections
     ext = Table.read('data/vf_v2_extinction.fits')['A(NUV)_SandF', 'A(R)_SandF',
@@ -65,6 +68,53 @@ def get_stellar_columns():
     return mstar, sfr, delta_sfr
 
 
+###################################################
+# CREATE BOOL COLUMNS TO ISOLATE dSFR POPULATIONS #
+#   * Main Sequence
+#   * Transition
+#   * Suppressed
+###################################################
+
+def dsfr_columns(df, n_pop):
+    '''
+    Aim: Create bool columns to isolate the dSFR populations.
+    * df --> dataframe of galaxies with dSFR column
+    * pop_list --> number of populations (integer; 2 or 3)
+        * 3 --> main sequence, transition, suppressed (respectively)
+        * 2 --> main sequence, suppressed (respectively)
+    Result: row-matched boolean flags for each population type!
+    '''
+    
+    if 'delta_logsfr' not in df.columns:
+        print('Cannot add dSFR bool columns! Need "delta_logsfr" column to continue.')
+        return
+        
+    #if only two populations given, then separate into main sequence and suppressed
+    if n_pop==2:
+        pop1_flag = (df['delta_logsfr']>-1.)
+        pop3_flag = (df['delta_logsfr']<=-1.)
+    
+    #if three populations given, then separate into main sequence, transition, and suppressed
+    elif n_pop==3:
+        pop1_flag = (df['delta_logsfr']>-0.5)
+        pop2_flag = (df['delta_logsfr']<=-0.5) & (df['delta_logsfr']>=-2.)
+        pop3_flag = (df['delta_logsfr']<-2.)
+        
+        #add transition flag
+        df['transition_pop'] = pop2_flag
+    
+    else:
+        print('Number of populations must be 2-3. Unable to continue.')
+        return
+    
+    #add main sequence, suppressed flags
+    df['ms_pop'] = pop1_flag
+    df['suppressed_pop'] = pop3_flag
+    
+    #return the updated dataframe
+    return df
+
+
 ################################
 # INITIALIZE THE FEATURE TABLE #
 ################################
@@ -84,7 +134,10 @@ def make_galfit_table(params):
         t = Table.read(f'data/vf_v2_galfit_{band}.fits')
         for colname in params.COLUMNS:
             data_table[f'{colname}_{band}'] = t[colname]
-                        
+            
+            #if 'CRE' in colname:
+            #    data_table[f'{colname}_{band}'] = np.log10(t[colname])
+            
             #if r-band, pull the axis ratio!
             if band=='r':
                 data_table[f'Axis Ratio'] = t['CAR']
@@ -102,6 +155,9 @@ def make_galfit_table(params):
     phot, ext = read_phot_tables()
     NUV_r, W1_W3 = get_photometric_colors(phot, ext)   #from conversion_utils
     data_table.add_columns([NUV_r,W1_W3], names=['NUV_r','W1_W3'])
+    
+    #add RA, DEC columns
+    data_table.add_columns([phot['RA_MOMENT'], phot['DEC_MOMENT']], names=['RA','DEC'])
     
     #add SNR columns!
     data_table['SNR_W3'] = calculate_SNR(phot['FLUX_AP06_W3'], phot['FLUX_IVAR_AP06_W3'])
@@ -353,4 +409,4 @@ def create_median_table(feature_data, features):
         #add the row...
         summary_rows.append(row)
     
-    return summary_rows
+    return pd.DataFrame(summary_rows)

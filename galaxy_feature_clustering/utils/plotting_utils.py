@@ -554,6 +554,8 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
     #INITIATE
     fig, axes = plt.subplots(nrows=nrow, ncols=ncol, figsize=(fig_width, fig_height), constrained_layout=True)
     
+    axes = np.atleast_2d(axes)
+    
     #read values from the dictionary, 
     for (i, j), med_label in layout_dict.items():        
 
@@ -615,6 +617,25 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
 
     plt.show()
     return
+
+
+def plot_median_nser_pop(feature_data, n_pop):    
+    '''
+    Aim: Use plot_group_features to generate n_pop (2 or 3) 1x2 subplots of Sersic index distributions for the feature groups.
+    * This code is for a specific set of science plots involving W1 and g-band!
+    '''
+    from table_utils import dsfr_columns, create_median_table
+
+    layout_dict =  {(0, 0): 'CN_g_unscaled',
+                    (0, 1): 'CN_W1-fixBA_unscaled'}
+
+    df = dsfr_columns(feature_data, 3)
+
+    for pop in ['ms_pop','transition_pop','suppressed_pop']:
+        flag=df[pop]
+        df_med = create_median_table(df[flag], ['CN_g','CN_W1-fixBA'])  
+        plot_group_features(df_med, layout_dict=layout_dict, nser_ylim=None, re_ylim=None)
+
 
 
 def feature_rainclouds(feature_data, feature_list=None):
@@ -890,12 +911,15 @@ def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=Fal
     if dsfr:
         prefix='delta_logsfr'
         xlims=(-6,2)
+        bin_width = 0.3
     elif w1ser:
         prefix='CN_W1'
         xlims=(0,5)
+        bin_width = 0.2
     elif gser:
         prefix='CN_g'
         xlims=(0,5)
+        bin_width = 0.2
     else:
         print('Need to set dsfr, w1ser, or gser to True.')
         return
@@ -958,9 +982,10 @@ def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=Fal
             #skip if too few points to make a meaningful histogram
             if len(x_feature) < 5:
                 continue
-
-            hist_plot = ax.hist(x_feature, color=colors[k], bins=20,
-                                density=True, alpha=0.3, edgecolor='gray')
+            
+            bins = np.arange(xlims[0], xlims[1] + bin_width, bin_width) 
+            hist_plot = ax.hist(x_feature, color=colors[k], bins=bins,
+                                density=True, alpha=0.2, edgecolor='gray')
             kde = sns.kdeplot(x_feature, color=colors[k], label=f'FG{k}', ax=ax)
 
         ax.set_xlim(*xlims)
