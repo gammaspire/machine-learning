@@ -75,6 +75,11 @@ def iqr_clipping(df, features, k_clip=1.5):
 
     print("Excluded VFIDs:")
     print(excluded['VFID'].values)
+    import csv
+
+    with open('output.csv', mode='w', newline='') as csvfile:
+        writer = csv.writer(csvfile, delimiter=',')
+        writer.writerow(excluded['VFID'].values)
     
     return df.loc[~outlier_mask]
 

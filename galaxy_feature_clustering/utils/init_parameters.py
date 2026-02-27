@@ -114,10 +114,24 @@ The desired k limit for clipping outliers from the data distribution via interqu
         #any points not in this bloated IQR are outliers. goodbye outliers.
 * set to None to include full range of parameters.
 '''
-IQRCLIP=1.5
+IQRCLIP=None  #None   #2
 
+'''
+* List of VFIDs to exclude from the sample! This list should specifically encompass galaxies with unreliable GALFIT models that somehow snuck past other quality checks (e.g., numerical error flag).
+* Set to None if no galaxies excluded.
+'''
+EXCLUDE_LIST=['VFID0293','VFID0455','VFID0800','VFID1435','VFID1580',
+              'VFID1721','VFID2090','VFID2252','VFID2318','VFID2399',
+              'VFID2567','VFID2977','VFID2996','VFID3127','VFID3155',
+              'VFID3649','VFID4056','VFID4064','VFID4086','VFID4186',
+              'VFID4196','VFID4390','VFID4587','VFID5056','VFID5204',
+              'VFID5289','VFID5234','VFID5289','VFID5515','VFID5747',
+              'VFID6042']
+
+'''
 #number of clusters to use for kmeans
 #if you want the code to optimize k using the silhouette method, set K=None
+'''
 K=3
 
 
@@ -239,6 +253,7 @@ class Params():
         self.OPTIMIZE_HDB_PARAMS = OPTIMIZE_HDB_PARAMS
         
         self.IQRCLIP = IQRCLIP
+        self.EXCLUDE_LIST = EXCLUDE_LIST
         
         self.PLOT_SILHOUETTES = PLOT_SILHOUETTES
         self.PLOT_CORNER = PLOT_CORNER

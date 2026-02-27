@@ -262,6 +262,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
                 subset_data = (env_flag[feature_data['Feature Cluster'] == k_cluster].values).astype(int)
                 
                 title_ = 'Environment Distribution Within each Feature Group'
+                legend_loc = 'upper left'
                 ylim1 = 0
                 ylim2 = None
 
@@ -279,8 +280,9 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
                 subset_data = (env['Feature Cluster'].values == k_cluster).astype(int)
                 
                 title_ = 'Feature Group Composition Within each Environment'
+                legend_loc = 'center left'
                 ylim1 = 0
-                ylim2 = 0.80
+                ylim2 = 0.85
             
             ########
             # BOTH #
@@ -341,7 +343,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
 
     ax.set_title(title_)
     
-    ax.legend(loc='upper left')
+    ax.legend(loc=legend_loc)
     
     plt.show()
 
@@ -621,21 +623,54 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
 
 def plot_median_nser_pop(feature_data, n_pop):    
     '''
+    Aim: Use plot_group_features to generate n_pop 1x2 subplots of Sersic index distributions for the feature groups.
+    * This code is for a specific set of science plots involving W1 and g-band! Also 
+    '''
+    from table_utils import dsfr_columns, create_median_table
+
+    if n_pop not in [2,3]:
+        print('n_pop variable must be 2 or 3. Unable to continue. Gob job.')
+        return
+    
+    layout_dict =  {(0, 0): 'CN_g_unscaled',
+                    (0, 1): 'CN_W1-fixBA_unscaled'}
+
+    df = dsfr_columns(feature_data, n_pop)
+
+    for pop in ['ms_pop','transition_pop','suppressed_pop']:
+        if (pop=='transition_pop') and (n_pop==2):
+            continue #go to next iteration; if n_pop=2, then there is no transition population
+        flag=df[pop]
+        df_med = create_median_table(df[flag], ['CN_g','CN_W1-fixBA'])  
+        plot_group_features(df_med, layout_dict=layout_dict, nser_ylim=None, re_ylim=None)
+        
+        
+def plot_ttype_pop(feature_data, n_pop):    
+    '''
     Aim: Use plot_group_features to generate n_pop (2 or 3) 1x2 subplots of Sersic index distributions for the feature groups.
     * This code is for a specific set of science plots involving W1 and g-band!
     '''
     from table_utils import dsfr_columns, create_median_table
 
-    layout_dict =  {(0, 0): 'CN_g_unscaled',
-                    (0, 1): 'CN_W1-fixBA_unscaled'}
+    if n_pop not in [2,3]:
+        print('n_pop variable must be 2 or 3. Unable to continue. Gob job.')
+        return
 
-    df = dsfr_columns(feature_data, 3)
+    df = dsfr_columns(feature_data, n_pop)
 
     for pop in ['ms_pop','transition_pop','suppressed_pop']:
+        if (pop=='transition_pop') and (n_pop==2):
+            continue #go to next iteration; if n_pop=2, then there is no transition population
         flag=df[pop]
-        df_med = create_median_table(df[flag], ['CN_g','CN_W1-fixBA'])  
-        plot_group_features(df_med, layout_dict=layout_dict, nser_ylim=None, re_ylim=None)
-
+        
+        #drop any NaN values, indicating that the galaxy has no t-type available
+        init_len = len(df[flag])
+        df = df.copy().dropna(subset=['t_type'])
+        post_len = len(df[flag])
+        
+        print(f'Dropping {init_len-post_len} NaN values from {pop} samples.')
+                
+        feature_rainclouds(df[flag], feature_list=['t_type'])
 
 
 def feature_rainclouds(feature_data, feature_list=None):

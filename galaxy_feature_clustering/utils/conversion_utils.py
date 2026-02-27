@@ -164,5 +164,5 @@ def calculate_SNR(signal_array, ivar_array):
     
     noise_array = 1/np.sqrt(ivar_array)
     snr = signal_array/noise_array
-    
+        
     return snr

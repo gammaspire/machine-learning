@@ -19,15 +19,19 @@ def read_phot_tables():
     
     #needed NUV, R, W1, W3 photometric fluxes (in nanomaggies)
     flux_cols = ['FLUX_AP06_NUV', 'FLUX_AP06_W3',
-                 'FLUX_AP06_R', 'FLUX_AP06_W1']
+                 'FLUX_AP06_R', 'FLUX_AP06_W1',
+                 'FLUX_AP06_G']
     
-    #grab the W3, NUV ivar columns (also in nanomaggies)
-    ivar_cols = ['FLUX_IVAR_AP06_NUV', 'FLUX_IVAR_AP06_W3'] 
+    #grab the W3, NUV, g, W1 ivar columns (also in nanomaggies)
+    ivar_cols = ['FLUX_IVAR_AP06_NUV', 'FLUX_IVAR_AP06_W3', 'FLUX_IVAR_AP06_W1', 'FLUX_IVAR_AP06_G'] 
     
     #also grab RA, DEC columns. :-)
     radec_cols = ['RA_MOMENT', 'DEC_MOMENT']
     
-    phot = Table.read('data/vf_v2_legacy_ephot.fits')[flux_cols+ivar_cols+radec_cols]   
+    #one more column...bright star flag!
+    bs_col = ['BRIGHTSTAR']
+    
+    phot = Table.read('data/vf_v2_legacy_ephot.fits')[flux_cols+ivar_cols+radec_cols+bs_col]   
     
     #extinction corrections
     ext = Table.read('data/vf_v2_extinction.fits')['A(NUV)_SandF', 'A(R)_SandF',
@@ -40,6 +44,12 @@ def read_phot_tables():
 def get_vcosmic_column():
     env = Table.read('data/vf_v2_environment.fits')
     return env['VFID'], env['Vcosmic']
+
+
+#pull Hubble t-type from Hyperleda catalog (which I then saved to virgowise_data.fits)
+def get_ttype_column():
+    hyp = Table.read('data/virgowise_data.fits')
+    return hyp['t_type']
 
 
 def get_env_columns():
@@ -159,9 +169,17 @@ def make_galfit_table(params):
     #add RA, DEC columns
     data_table.add_columns([phot['RA_MOMENT'], phot['DEC_MOMENT']], names=['RA','DEC'])
     
+    #add Hubble t-type column
+    data_table['t_type'] = get_ttype_column()
+    
     #add SNR columns!
+    data_table['SNR_W1'] = calculate_SNR(phot['FLUX_AP06_W1'], phot['FLUX_IVAR_AP06_W1'])
     data_table['SNR_W3'] = calculate_SNR(phot['FLUX_AP06_W3'], phot['FLUX_IVAR_AP06_W3'])
+    data_table['SNR_g'] = calculate_SNR(phot['FLUX_AP06_G'], phot['FLUX_IVAR_AP06_G'])
     data_table['SNR_NUV'] = calculate_SNR(phot['FLUX_AP06_NUV'], phot['FLUX_IVAR_AP06_NUV'])
+    
+    #add bright star flag!
+    data_table['BRIGHTSTAR_FLAG'] = phot['BRIGHTSTAR']
     
     data_table = data_table.to_pandas()
 
@@ -224,15 +242,25 @@ def trim_galfit_table(full_df, params):
     df_three = df_two.loc[~(df_two[numerr_cols]).any(axis=1)]
     print(f'ALERT! Removing {len(df_two) - len(df_three)} with a GALFIT numerical error.')
     
+    #apply the bright star flag (from JM's photometry catalog)
+    bs_flag = df_three['BRIGHTSTAR_FLAG']
+    df_bs = df_three.loc[~bs_flag]
+    print(f'ALERT! Removing {np.sum(bs_flag)} galaxies with a nearby bright star.')
+    
     #apply the logMstar, logSFR completeness limit flags. 
     #note: if either or both set to None in init_parameters.py, then this function will do nothing.
-    df_four = completeness_limits(df_three, params.LOGMSTAR_LIM, params.LOGSFR_LIM)
-    print(f'ALERT! Removing {len(df_three) - len(df_four)} which do not pass any Mstar, SFR completeness limits specified in init_parameters.txt')
+    df_four = completeness_limits(df_bs, params.LOGMSTAR_LIM, params.LOGSFR_LIM)
+    print(f'ALERT! Removing {len(df_bs) - len(df_four)} which do not pass any Mstar, SFR completeness limits specified in init_parameters.txt')
     
     #apply W3, NUV SNR limit
     snr_limit = (df_four['SNR_W3']>=5.) | (df_four['SNR_NUV']>=5.)
-    print(f'ALERT! Removed {np.sum(~snr_limit)} galaxies after applying the W3, NUV SNR limit!')
-    df_five = df_four.loc[snr_limit]
+    print(f'ALERT! Removed {np.sum(~snr_limit)} galaxies after applying the W3, NUV SNR limit.')
+    df_five1 = df_four.loc[snr_limit]
+    
+    #apply W1 SNR limit
+    snr_limit_w1 = (df_five1['SNR_W1']>=20.)
+    print(f'ALERT! Removed {np.sum(~snr_limit_w1)} galaxies after applying the W1 SNR limit.')
+    df_five = df_five1.loc[snr_limit_w1]
     
     #apply inclination cut (remove galaxies with B/A < 0.25)
     df_six = df_five.loc[df_five['Axis Ratio']>=0.25]
@@ -241,7 +269,15 @@ def trim_galfit_table(full_df, params):
     #if magnitude colors are in the list of features, then we have to apply
     #a quality flag here too. This amount to just dropping the non-finite/unphysical/fake news values
     if params.colors:
-        df_six = trim_colors(df_five)
+        df_six = trim_colors(df_six)
+    
+    #and lastly...
+    
+    #if user specified VFIDs to exclude in init_parameters.py, this is the time to create the flag
+    if params.EXCLUDE_LIST is not None:
+        exclude_flag = [VFID.decode('utf-8') not in params.EXCLUDE_LIST for VFID in df_six['VFID']]
+        df_six = df_six[exclude_flag]
+        print(f'ALERT! Removed {np.sum(~np.asarray(exclude_flag))} galaxies after excluding VFIDs from init_parameters.py.')
     
     message=f'Removed {ngal_before - len(df_six)}/{ngal_before}  galaxies in total.'        
     
@@ -251,7 +287,6 @@ def trim_galfit_table(full_df, params):
     
     #return the 'cleansed' dataframe
     return df_six
-
 
 ###########################################
 # APPLYING SFR, MSTAR COMPLETENESS LIMITS #

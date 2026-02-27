@@ -89,10 +89,9 @@ def run_kmeans(colors=False, save_table=True):
             #remove pesky outliers that lie beyond 3-sigma of their respective features' means
             df_clipped = iqr_clipping(df_trimmed, features, k_clip=params.IQRCLIP)
             message = f'Alert! Removed {len(df_trimmed) - len(df_clipped)} galaxies after IQR Clipping!'
+            print(message)
         else:
             df_clipped = df_trimmed.copy()
-        
-        print(message)
         
         #scale the feature data.
         df_scaled = standardize_data(df_clipped, features)
