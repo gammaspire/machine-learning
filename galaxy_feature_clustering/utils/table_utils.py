@@ -29,7 +29,7 @@ def read_phot_tables():
     radec_cols = ['RA_MOMENT', 'DEC_MOMENT']
     
     #one more column...bright star flag!
-    bs_col = ['BRIGHTSTAR']
+    bs_col = ['BRIGHTSTAR', 'MEDIUMSTAR']
     
     phot = Table.read('data/vf_v2_legacy_ephot.fits')[flux_cols+ivar_cols+radec_cols+bs_col]   
     
@@ -180,6 +180,7 @@ def make_galfit_table(params):
     
     #add bright star flag!
     data_table['BRIGHTSTAR_FLAG'] = phot['BRIGHTSTAR']
+    data_table['MEDIUMSTAR_FLAG'] = phot['MEDIUMSTAR']
     
     data_table = data_table.to_pandas()
 
@@ -243,7 +244,7 @@ def trim_galfit_table(full_df, params):
     print(f'ALERT! Removing {len(df_two) - len(df_three)} with a GALFIT numerical error.')
     
     #apply the bright star flag (from JM's photometry catalog)
-    bs_flag = df_three['BRIGHTSTAR_FLAG']
+    bs_flag = df_three['BRIGHTSTAR_FLAG'] & df_three['MEDIUMSTAR_FLAG']
     df_bs = df_three.loc[~bs_flag]
     print(f'ALERT! Removing {np.sum(bs_flag)} galaxies with a nearby bright star.')
     

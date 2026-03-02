@@ -140,11 +140,11 @@ K=3
 ##############################################
 
 #set to True to output a plot of the silhouette values vs. number of clusters
-PLOT_SILHOUETTES=True
+PLOT_SILHOUETTES=False
 
 #set to True feature reduction for plotting the kmeans clusters in 2D space
 #if False, will use X and Y
-PCA_FOR_PLOTTING=True
+PCA_FOR_PLOTTING=False
 
 #plot the feature vector components of each PCA!
 #will be ignored if PCA_FOR_PLOTTING=False
@@ -168,7 +168,7 @@ UMAP_FOR_PLOTTING=True
 
 #set to True for the script to generate a 2D projection of the feature clusters!
 #can dictate the axes with X and Y above, assuming PCA_FOR_PLOTTING=False
-PLOT_CLUSTERS=True
+PLOT_CLUSTERS=False
 
 #set to True for the script to generate a corner plot of all feature clusters in a 
 #physically meaningful space (i.e., feature vs. feature)
@@ -176,7 +176,7 @@ PLOT_CORNER=False
 
 #set to True for the script to create subplots of the median galaxy features (including Size Ratio, NUV-r, and W1-W3)
 #COMPANION TO LAYOUT_DICT.
-PLOT_MEDIANS=True
+PLOT_MEDIANS=False
 
 '''
 The subplot coordinate/columnname dictionary to help organize the figure layout. If None, will default to using W1, W3, g-band Re+nser, as well as Size Ratio, NUV-r, and W1-W3.
@@ -216,10 +216,10 @@ FEATURE_LIST=None
 #set to True for script to plot the fraction of galaxies in one of five VFS environments from Castignani+2022 (pure field, filament, poor group, rich group, cluster). these fractions are split up into however many feature clusters the user defines.
     #e.g., feature cluster 0 will be divided into five environments, feature cluster 1 will be divided into five environments, etc.
     #note that the environments, save for the pure field, are not entirely decoupled from one another. one galaxies could belong to multiple environments.
-PLOT_ENV_FRACTION=True
+PLOT_ENV_FRACTION=False
 
 #plot each feature cluster on an SFR vs. Mstar plot, with histogram sub-axes to show the scatter distribution
-PLOT_SFRMSTAR=True
+PLOT_SFRMSTAR=False
 
 
 ###############################

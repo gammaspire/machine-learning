@@ -902,6 +902,12 @@ def plot_dSFR_KDEs(feature_data):
     
     for k in k_clusters:
         dlogsfr = feature_data['delta_logsfr'][kflags[k]]
+        bin_width=0.2
+        
+        bins = np.arange(min(dlogsfr), max(dlogsfr) + bin_width, bin_width) 
+        hist_plot = plt.hist(dlogsfr, color=colors[k], bins=bins,
+                                density=True, alpha=0.2, edgecolor='gray')
+
         fig = sns.kdeplot(dlogsfr, color=colors[k], label=f'Feature Group {k}: {len(feature_data[kflags[k]])}')
     
     plt.xlabel(r'$\Delta$logSFR')

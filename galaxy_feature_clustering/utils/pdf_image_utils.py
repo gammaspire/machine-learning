@@ -69,7 +69,6 @@ def pull_ls_jpg(vfid,ra,dec):
     
     return path
 
-
 def get_galaxy_jpgs(df_subset):
     '''
     AIM: pull all Legacy Survey JPG images from the inputted dataframe of galaxies, saves to disk.
@@ -109,7 +108,7 @@ def pull_ls_img(ra, dec, layer='ls-dr9'):
     #define the url to the galaxy image
     url = legacy_link(ra, dec, layer=layer)
     
-    r = SESSION.get(url, timeout=30)
+    r = SESSION.get(url, timeout=(5,90))  #timeout is set to 5 tries, 90 seconds
     r.raise_for_status()   #raises error if HTTP times out, etc.
     
     #grab the .jpg content pulled from the LS Viewer; convert to RGB matrices
