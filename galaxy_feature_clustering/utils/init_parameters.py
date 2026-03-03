@@ -120,13 +120,24 @@ IQRCLIP=None  #None   #2
 * List of VFIDs to exclude from the sample! This list should specifically encompass galaxies with unreliable GALFIT models that somehow snuck past other quality checks (e.g., numerical error flag).
 * Set to None if no galaxies excluded.
 '''
-EXCLUDE_LIST=['VFID0293','VFID0455','VFID0800','VFID1435','VFID1580',
-              'VFID1721','VFID2090','VFID2252','VFID2318','VFID2399',
-              'VFID2567','VFID2977','VFID2996','VFID3127','VFID3155',
-              'VFID3649','VFID4056','VFID4064','VFID4086','VFID4186',
-              'VFID4196','VFID4390','VFID4587','VFID5056','VFID5204',
-              'VFID5289','VFID5234','VFID5289','VFID5515','VFID5747',
-              'VFID6042']
+
+#outliers found using IQR clipping, then visually inspected for robustness. the models that do not pass inspection are listed here.
+EXCLUDE_OUTLIERS=['VFID0293','VFID0455','VFID0800','VFID1435','VFID1580','VFID1721',
+                  'VFID2090','VFID2252','VFID2318','VFID2399','VFID2567','VFID2977',
+                  'VFID2996','VFID3127','VFID3155','VFID3649','VFID4056','VFID4064',
+                  'VFID4086','VFID4186','VFID4196','VFID4390','VFID4587','VFID5056',
+                  'VFID5204','VFID5289','VFID5234','VFID5289','VFID5515','VFID5747',
+                  'VFID6042']
+
+#galaxies with bright foreground found via visual inspection. the models adversely affected by prominent and/or unmasked foreground stars are listed here.
+EXCLUDE_BRIGHTSTARS=['VFID0035','VFID0051','VFID0067','VFID0584','VFID0711','VFID0712',
+                     'VFID0766','VFID1011','VFID1767','VFID1841','VFID1842','VFID2417',
+                     'VFID3185','VFID3196','VFID3440','VFID3443','VFID3461','VFID3691',
+                     'VFID3863','VFID3924','VFID4787','VFID5021','VFID5291','VFID5341',
+                     'VFID5372']
+
+#full galaxy exclusion list
+EXCLUDE_LIST=EXCLUDE_OUTLIERS+EXCLUDE_BRIGHTSTARS
 
 '''
 #number of clusters to use for kmeans
