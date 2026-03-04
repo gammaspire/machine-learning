@@ -640,6 +640,7 @@ def plot_median_nser_pop(feature_data, n_pop):
     for pop in ['ms_pop','transition_pop','suppressed_pop']:
         if (pop=='transition_pop') and (n_pop==2):
             continue #go to next iteration; if n_pop=2, then there is no transition population
+        print(pop)
         flag=df[pop]
         df_med = create_median_table(df[flag], ['CN_g','CN_W1-fixBA'])  
         plot_group_features(df_med, layout_dict=layout_dict, nser_ylim=None, re_ylim=None)
