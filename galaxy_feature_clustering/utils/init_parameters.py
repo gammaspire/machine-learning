@@ -198,10 +198,10 @@ The subplot coordinate/columnname dictionary to help organize the figure layout.
 LAYOUT_DICT=   {(0, 0): 'CRE_g_unscaled',
                 (0, 1): 'CRE_W1-fixBA_unscaled',
                 (1, 0): 'CN_g_unscaled',
-                (1, 1): 'CN_W1-fixBA_unscaled',
-                (2, 0): 'Size Ratio',
-                (2, 1): 'NUV_r',
-                (3, 0): 'W1_W3'}
+                (1, 1): 'CN_W1-fixBA_unscaled'}
+                #(2, 0): 'Size Ratio',
+                #(2, 1): 'NUV_r',
+                #(3, 0): 'W1_W3'}
 
 #LAYOUT_DICT=   {(0, 0): 'CRE_g_unscaled',
 #                (0, 1): 'CRE_W1-fixBA_unscaled',

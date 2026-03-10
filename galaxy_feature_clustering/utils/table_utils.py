@@ -217,23 +217,33 @@ def trim_colors(df, color_cols=['NUV_r','W1_W3'], print_=True):
 
 def trim_galfit_table(full_df, params):
     '''
-    Apply trimming flags -- non-data, Re, nser, numerical error
+    Apply trimming flags -- non-data, Re, nser, numerical error; SNR; stellar mass completeness
     '''
     
     #unfortunately have to trim any row which has at least one of the below "problems."
     
     ngal_before = len(full_df)
     
-    #center x-position, Nser, numerical error columns
+    #apply W3, NUV SNR limit
+    snr_limit = (full_df['SNR_W3']>=5.) | (full_df['SNR_NUV']>=5.)
+    print(f'ALERT! Removed {np.sum(~snr_limit)} galaxies after applying the W3, NUV SNR limit.')
+    df_snrtrim1 = full_df.loc[snr_limit]
+    
+    #apply W1 SNR limit
+    snr_limit_w1 = (df_snrtrim1['SNR_W1']>=20.)
+    print(f'ALERT! Removed {np.sum(~snr_limit_w1)} galaxies after applying the W1 SNR limit.')
+    df_snrtrim = df_snrtrim1.loc[snr_limit_w1]
+    
+    #isolate the center x-position, Nser, numerical error columns
     nser_cols = [f'CN_{band}' for band in params.BANDS_TO_CLUSTER]
     re_cols = [f'CRE_{band}' for band in params.BANDS_TO_CLUSTER]
     xc_cols = [f'CXC_{band}' for band in params.BANDS_TO_CLUSTER]
     numerr_cols = [f'CNumerical_Error_{band}' for band in params.BANDS_TO_CLUSTER]
     
     #drop row if any nser or re model value is zero (indicates the model did not finish)
-    zero_flag = (full_df[xc_cols]==0)
-    df_one = full_df.loc[~(zero_flag).any(axis=1)]
-    print(f'ALERT! Removing {len(full_df)-len(df_one)} galaxies with no GALFIT fit.')
+    zero_flag = (df_snrtrim[xc_cols]==0)
+    df_one = df_snrtrim.loc[~(zero_flag).any(axis=1)]
+    print(f'ALERT! Removing {len(df_snrtrim)-len(df_one)} galaxies with no GALFIT fit.')
         
     #drop rows with any nser > 6.
     df_two = df_one.loc[~(df_one[nser_cols]>6).any(axis=1)]
@@ -253,41 +263,31 @@ def trim_galfit_table(full_df, params):
     df_four = completeness_limits(df_bs, params.LOGMSTAR_LIM, params.LOGSFR_LIM)
     print(f'ALERT! Removing {len(df_bs) - len(df_four)} which do not pass any Mstar, SFR completeness limits specified in init_parameters.txt')
     
-    #apply W3, NUV SNR limit
-    snr_limit = (df_four['SNR_W3']>=5.) | (df_four['SNR_NUV']>=5.)
-    print(f'ALERT! Removed {np.sum(~snr_limit)} galaxies after applying the W3, NUV SNR limit.')
-    df_five1 = df_four.loc[snr_limit]
-    
-    #apply W1 SNR limit
-    snr_limit_w1 = (df_five1['SNR_W1']>=20.)
-    print(f'ALERT! Removed {np.sum(~snr_limit_w1)} galaxies after applying the W1 SNR limit.')
-    df_five = df_five1.loc[snr_limit_w1]
-    
     #apply inclination cut (remove galaxies with B/A < 0.25)
-    df_six = df_five.loc[df_five['Axis Ratio']>=0.25]
-    print(f'ALERT! Removed {len(df_five) - len(df_six)} galaxies after applying the inclination cut.')
+    df_five = df_four.loc[df_four['Axis Ratio']>=0.25]
+    print(f'ALERT! Removed {len(df_four) - len(df_five)} galaxies after applying the inclination cut.')
         
     #if magnitude colors are in the list of features, then we have to apply
     #a quality flag here too. This amount to just dropping the non-finite/unphysical/fake news values
     if params.colors:
-        df_six = trim_colors(df_six)
+        df_five = trim_colors(df_five)
     
     #and lastly...
     
     #if user specified VFIDs to exclude in init_parameters.py, this is the time to create the flag
     if params.EXCLUDE_LIST is not None:
-        exclude_flag = [VFID.decode('utf-8') not in params.EXCLUDE_LIST for VFID in df_six['VFID']]
-        df_six = df_six[exclude_flag]
+        exclude_flag = [VFID.decode('utf-8') not in params.EXCLUDE_LIST for VFID in df_five['VFID']]
+        df_five = df_five[exclude_flag]
         print(f'ALERT! Removed {np.sum(~np.asarray(exclude_flag))} galaxies after excluding VFIDs from init_parameters.py.')
     
-    message=f'Removed {ngal_before - len(df_six)}/{ngal_before}  galaxies in total.'        
+    message=f'Removed {ngal_before - len(df_five)}/{ngal_before}  galaxies in total. This leaves {len(df_five)} galaxies. Wow.'        
     
     print('#'*len(message))
     print(message)
     print('#'*len(message))
     
     #return the 'cleansed' dataframe
-    return df_six
+    return df_five
 
 ###########################################
 # APPLYING SFR, MSTAR COMPLETENESS LIMITS #
