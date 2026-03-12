@@ -158,7 +158,7 @@ def make_galfit_table(params):
     #append mstar, sfr columns
     data_table['logmstar'], data_table['logsfr'], data_table['delta_logsfr'] = get_stellar_columns()
     
-    #add a size ratio column...just because. (I actually need it for analysis. not used for clustering.'d)
+    #add a size ratio column...just because. (I actually need it for analysis. not used for clustering.)
     data_table['Size Ratio'] = data_table['CRE_W3-fixBA'] / data_table['CRE_W1-fixBA']
     
     #add NUV-r, W1-W3 colors
@@ -194,7 +194,7 @@ def make_galfit_table(params):
 def trim_colors(df, color_cols=['NUV_r','W1_W3'], print_=True):
     '''
     AIM: Mask the input Pandas dataframe to remove galaxy rows with illegitimate color magnitudes. 
-    * Used for trim_galfit_table() and in plotting_utils.py
+    * Used for trim_galfit_table() and create_median_table()
     * color_cols is to be a list of strings identifying the relevant column names.
     '''
     
@@ -207,6 +207,24 @@ def trim_colors(df, color_cols=['NUV_r','W1_W3'], print_=True):
 
     if print_:
         print(f'ALERT! Removed {ngal_before_cut - len(df_masked)} after vetting inf/-inf photometric entries.')
+    
+    return df_masked
+
+
+def trim_ratios(df, print_=True):
+    '''
+    AIM: Mask the input Pandas dataframe to remove size ratios calculated with W3 SNR < 10.
+    * Used in create_median_table() and plotting_utils.py -- 
+    '''
+    #isolate length of dataframe before mask
+    ngal_before_cut=len(df)
+    
+    #create a mask to isolate galaxies with a W3 SNR > 10.
+    mask = (df['SNR_W3']>10.)
+    df_masked = df[mask]
+    
+    if print_:
+        print(f'ALERT! Removed {ngal_before_cut - len(df_masked)} after limiting W3 SNR > 10.')
     
     return df_masked
 
@@ -428,7 +446,11 @@ def create_median_table(feature_data, features):
             
             #if features are the magnitude colors, be sure to exclude invalid values
             if feature in ['NUV_r', 'W1_W3']:
+                print('Calculating medians -- removing invalid entries for NUV-r and W1-W3...')
                 df_cluster = trim_colors(df_cluster.copy(), print_=False)
+            
+            if feature == 'Size Ratio':
+                df_cluster = trim_ratios(df_cluster.copy())
             
             #isolate the feature from the cluster_id data
             arr = df_cluster[feature].values
