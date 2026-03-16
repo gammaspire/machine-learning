@@ -894,6 +894,9 @@ def feature_rainclouds(feature_data, feature_list=None):
         ax.set_yticklabels([f'Feature Cluster {k}' for k in k_clusters])
         ax.set_xlabel(get_feature_label(feature_name, LABEL_DICT))   #need the fancy schmancy name!
 
+        if 'CRE' in feature_name:
+            ax.set_xscale('log')
+        
         plt.show()
 
 

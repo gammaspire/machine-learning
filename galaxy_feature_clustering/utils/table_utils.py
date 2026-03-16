@@ -445,12 +445,13 @@ def create_median_table(feature_data, features):
         for feature in features_unscaled:
             
             #if features are the magnitude colors, be sure to exclude invalid values
-            if feature in ['NUV_r', 'W1_W3']:
-                print('Calculating medians -- removing invalid entries for NUV-r and W1-W3...')
+            if feature in ['NUV_r', 'W1_W3'] and cluster_id==0:
+                print(f'Calculating medians for colors -- removing invalid entries for NUV-r and W1-W3...')
                 df_cluster = trim_colors(df_cluster.copy(), print_=False)
             
-            if feature == 'Size Ratio':
-                df_cluster = trim_ratios(df_cluster.copy())
+            if feature == 'Size Ratio' and cluster_id==0:
+                print(f'Calculating medians for Size Ratios -- removing SNR(W3) > 10 galaxies...')
+                df_cluster = trim_ratios(df_cluster.copy(), print_=False)
             
             #isolate the feature from the cluster_id data
             arr = df_cluster[feature].values
