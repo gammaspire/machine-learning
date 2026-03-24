@@ -63,10 +63,16 @@ def marker_palette(feature_data):
 
 def plot_silhouette(K, silhouettes):
     
-    plt.figure(figsize=(8,6))
+    plt.figure(figsize=(7,5))
     plt.plot(K, silhouettes, 'o-', color='green')
-    plt.xlabel('Number of Clusters (k)')
-    plt.ylabel('Silhouette Score')
+    
+    plt.xlabel('Number of Clusters (k)',fontsize=14)
+    plt.ylabel('Silhouette Score',fontsize=14)
+    
+    #raise fontsize of tickmark labels
+    plt.rc('xtick', labelsize=14)
+    plt.rc('ytick', labelsize=14)
+    
     plt.tight_layout()
     plt.show()
     
@@ -85,11 +91,14 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     #sort the unique Feature Clusters numerically
     unique_clusters = sorted(feature_data['Feature Cluster'].unique())
     
+    #create custom label map! example -- [0: 'FC0 (Ngal)']
+    label_map= {c: f"FC{c} ({len(feature_data[feature_data['Feature Cluster']==c])})" for c in unique_clusters if c!=-1}
+    
     #create a dictionary mapping each color to a Feature Cluster --> {k: color}
-    color_map = {c: cluster_colors[i] for i, c in enumerate(unique_clusters)}
+    color_map = {label_map[c]: cluster_colors[i] for i, c in enumerate(unique_clusters)}
     
     #create a dictionary mapping each marker shape to a Feature Cluster --> {k: shape}
-    marker_map = {c: cluster_shapes[i] for i, c in enumerate(unique_clusters)}
+    marker_map = {label_map[c]: cluster_shapes[i] for i, c in enumerate(unique_clusters)}
     
     #PCA and UMAP flag
     flag = (PCA | UMAP)
@@ -101,18 +110,23 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     x = 'Comp1' if flag else x
     y = 'Comp2' if flag else y
     
+    
+    print(label_map)
+    
     if -1 not in feature_data['Feature Cluster'].unique():
         plt.figure(figsize=(8,6))
+        
         ax = sns.scatterplot(data=feature_data, x=x, y=y, 
-                             hue='Feature Cluster',palette=color_map, 
-                             style='Feature Cluster',markers=marker_map,s=100,
-                             alpha=0.5, edgecolor='w', linewidth=0.4)
+                             hue=feature_data['Feature Cluster'].map(label_map),palette=color_map, 
+                             style=feature_data['Feature Cluster'].map(label_map),markers=marker_map,
+                             s=100,alpha=0.5, edgecolor='w', linewidth=0.4)
     else:
         ax = sns.scatterplot(x=x, y=y, data=feature_data[feature_data['Feature Cluster'] == -1], alpha=0.1,
                             color='lightgray', edgecolor='w', linewidth=0.4, label='Noise')
+        
         sns.scatterplot(x=x, y=y, data=feature_data[feature_data['Feature Cluster'] != -1], 
-                        hue='Feature Cluster', palette=color_map, 
-                        style='Feature Cluster', markers=marker_map,
+                        hue=feature_data['Feature Cluster'].map(label_map), palette=color_map, 
+                        style=feature_data['Feature Cluster'].map(label_map), markers=marker_map,
                         alpha=0.7, edgecolor='w', linewidth=0.4,
                         ax=ax)
     
@@ -120,8 +134,9 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     plt.ylabel('Component Two',fontsize=14)
     
     ax.grid(alpha=0.2)
-    ax.legend(fontsize='large', title_fontsize='large', title='Feature Cluster')
-    
+
+    ax.legend(fontsize='large', title_fontsize='large', title=None)
+        
     #raise fontsize of tickmark labels
     plt.rc('xtick', labelsize=14)
     plt.rc('ytick', labelsize=14)
@@ -337,7 +352,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
             err_y_up[k_cluster].append(unc_up)
             
             #define label for legend, but only for the first point of each FG (to avoid redundancies)
-            label_ = None if i!=0 else f'Feature Cluster {k_cluster} (Ngal={Ngal_feature_group})'
+            label_ = None if i!=0 else f'FC{k_cluster} ({Ngal_feature_group})'
             
             ax.scatter(index[i], fraction,  color=color_map[k_cluster], label=label_, s=90, 
                        edgecolor=edge_map[k_cluster], marker=shape_map[k_cluster], zorder=3)
@@ -365,9 +380,9 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
     ax.set_ylim(ylim1, ylim2)
     ax.set_ylabel('Fraction of Galaxies',fontsize=17)
 
-    ax.set_title(title_)
+    #ax.set_title(title_)
     
-    ax.legend(loc=legend_loc)
+    ax.legend(loc=legend_loc, fontsize=14)
     
     plt.show()
 
@@ -452,7 +467,7 @@ def plot_env_stacked_hist(feature_data, main_only=False):
     ax.set_ylabel('Fraction of Galaxies', fontsize=15)
     ax.set_ylim(0, 1)
 
-    ax.set_title('Feature Cluster Composition by Environment', fontsize=16)
+    #ax.set_title('Feature Cluster Composition by Environment', fontsize=16)
 
     ax.grid(axis='y', alpha=0.25)
     #ax.legend(title='Feature Cluster', bbox_to_anchor=(1.02, 1),
@@ -594,7 +609,7 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
             #this line will only plot one point per iteration of the k_cluster 'for' loop
             im = ax.scatter(k_cluster, median, s=100, 
                             edgecolor=edge_colors[k_cluster], marker=marker_shapes[k_cluster],
-                            color=cluster_colors[k_cluster], zorder=2, label=f'Feature Cluster {k_cluster}')
+                            color=cluster_colors[k_cluster], zorder=2, label=f'FC {k_cluster}')
             
             #plot the error bars
             err = ax.plot([k_cluster, k_cluster], [median-low_err, median+upp_err], 

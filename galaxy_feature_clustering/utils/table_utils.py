@@ -385,7 +385,7 @@ def k_reassignment(feature_data):
     
     #only run if k=3 AND k-means clustering has already run
     if (len(clusters)!=3) or ('Feature Cluster' not in feature_data.columns):
-        return
+        return feature_data
     
     #create clean copy of feature_data dataframe:
     df = feature_data.copy()
@@ -434,7 +434,7 @@ def create_median_table(feature_data, features):
 
     #initialize the rows
     summary_rows = []
-
+    
     #for every cluster_id (e.g., k=0), isolate the rows which belong to that cluster_id
     for cluster_id, df_cluster in feature_data.groupby("Feature Cluster"):
 
