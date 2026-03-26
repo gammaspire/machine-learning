@@ -40,14 +40,14 @@ def make_label_dictionary():
         * Remember that this list is meant to be all-encompassing! Set both arguments to True.
     '''
     
-    feature_dict = {'CRE_W1-fixBA': '[W1] Effective Radius',
-                    'CRE_W2': '[W2] Effective Radius',
-                    'CRE_W3-fixBA': '[W3] Effective Radius',
-                    'CRE_W4': '[W4] Effective Radius',
-                    'CRE_g': '[g] Effective Radius',
-                    'CRE_r': '[r] Effective Radius',
-                    'AVG_RE_gr': '[g+r] Average Effective Radius',
-                    'AVG_RE_W1W2': '[W1+W2] Average Effective Radius',
+    feature_dict = {'CRE_W1-fixBA': '[W1] Effective Radius (kpc)',
+                    'CRE_W2': '[W2] Effective Radius (kpc)',
+                    'CRE_W3-fixBA': '[W3] Effective Radius (kpc)',
+                    'CRE_W4': '[W4] Effective Radius (kpc)',
+                    'CRE_g': '[g] Effective Radius (kpc)',
+                    'CRE_r': '[r] Effective Radius (kpc)',
+                    'AVG_RE_gr': '[g+r] Average Effective Radius (kpc)',
+                    'AVG_RE_W1W2': '[W1+W2] Average Effective Radius (kpc)',
                     'CN_W1': '[W1] Sersic Index',
                     'CN_W1-fixBA': '[W1] Sersic Index',
                     'CN_W2': '[W2] Sersic Index',

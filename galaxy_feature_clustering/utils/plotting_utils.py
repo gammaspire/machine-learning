@@ -9,8 +9,15 @@ from data_utils import get_bootstrap_confint, get_ms_line
 #needed to apply certain quality cuts for magnitude colors and size ratios
 from table_utils import trim_colors, trim_ratios  
 
-#editing feature labels!
+from scipy.stats import ks_2samp
+from itertools import combinations
+
+#editing feature labels! global variable!
 LABEL_DICT = make_label_dictionary()
+
+#lastly, lastly...globally set the fontsize of tickmark labels
+plt.rc('xtick', labelsize=14)
+plt.rc('ytick', labelsize=14)
 
 
 ######################################
@@ -68,10 +75,6 @@ def plot_silhouette(K, silhouettes):
     
     plt.xlabel('Number of Clusters (k)',fontsize=14)
     plt.ylabel('Silhouette Score',fontsize=14)
-    
-    #raise fontsize of tickmark labels
-    plt.rc('xtick', labelsize=14)
-    plt.rc('ytick', labelsize=14)
     
     plt.tight_layout()
     plt.show()
@@ -136,10 +139,6 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     ax.grid(alpha=0.2)
 
     ax.legend(fontsize='large', title_fontsize='large', title=None)
-        
-    #raise fontsize of tickmark labels
-    plt.rc('xtick', labelsize=14)
-    plt.rc('ytick', labelsize=14)
     
     #plt.title(f'Structural Clusters in 2D Space')
     plt.tight_layout()
@@ -199,10 +198,6 @@ def plot_pca_components(feature_data, features, pca, cmap_name='tab20'):
     plt.axvline(0, color='gray', linewidth=0.8)
 
     plt.legend(loc='upper left', fontsize=12, markerscale=2, labelspacing=1.2, framealpha=0.3) #bbox_to_anchor=(1.05, 1), 
-
-    #raise fontsize of tickmark labels
-    plt.rc('xtick', labelsize=14)
-    plt.rc('ytick', labelsize=14)
     
     plt.tight_layout()
     plt.show()
@@ -645,10 +640,6 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
     #lastly...remove axes not used in the layout_dict
     used_axes = set(layout_dict.keys())
     
-    #lastly, lastly...raise fontsize of tickmark labels
-    plt.rc('xtick', labelsize=14)
-    plt.rc('ytick', labelsize=14)
-    
     for i in range(nrow):
         for j in range(ncol):
             if (i, j) not in used_axes:
@@ -726,7 +717,7 @@ def virgowise_median_plot(feature_data):
         ymin = np.ones(50)*(err_lower_bootstrap[-1])
 
         ax.fill_between(xfield,ymax,ymin,color='crimson',alpha=.1)
-        ax.set_ylim(0.4,1.5)
+        ax.set_ylim(0.4,2.0)
 
         ins.fill_between(xfield,ymax,ymin,color='crimson',alpha=0.1)
 
@@ -738,7 +729,6 @@ def virgowise_median_plot(feature_data):
         ax.legend(loc='upper left',fontsize=14)
         
         plt.show()
-
 
 
 def plot_median_nser_pop(feature_data, n_pop):    
@@ -807,7 +797,7 @@ def feature_rainclouds(feature_data, feature_list=None):
     
     * inspired by https://arxiv.org/pdf/2512.15137
     
-    ''' 
+    '''  
     
     #create palette maps
     color_map, edge_map, _ = marker_palette(feature_data)
@@ -847,10 +837,10 @@ def feature_rainclouds(feature_data, feature_list=None):
         #create copy of full feature_data table
         mod_df = feature_data.copy()
         
-        if feature_name in ['NUV-r','W1-W3']:
+        if feature_name in ['NUV_r','W1_W3']:
             mod_df = trim_colors(mod_df, print_=False)   #remove illegitimate magnitude entries
         elif feature_name == 'Size Ratio':
-            mod_df = trim_ratios(mod_df, print_=False)   #remove ratios calculated with W3 SNR < 10.
+            mod_df = trim_ratios(mod_df, print_=False)   #remove ratios calculated with W3 SNR < 10. AND those with np.nan.
         
         #create bool flags for each k feature cluster
         kflags = {k: (mod_df['Feature Cluster'].values==k) for k in k_clusters}
@@ -906,11 +896,13 @@ def feature_rainclouds(feature_data, feature_list=None):
             plt.scatter(features, y, s=10, c=edge_map[i], alpha=0.05)
         
         ax.set_yticks([k+1 for k in k_clusters])
-        ax.set_yticklabels([f'Feature Cluster {k}' for k in k_clusters])
-        ax.set_xlabel(get_feature_label(feature_name, LABEL_DICT))   #need the fancy schmancy name!
-
+        ax.set_yticklabels([f'Feature Cluster {k}' for k in k_clusters], fontsize=15)
+        ax.set_xlabel(get_feature_label(feature_name, LABEL_DICT), fontsize=15)   #need the fancy schmancy name
+        
+        if feature_name=='Size Ratio':
+            ax.set_xlim(0,4)
         if 'CRE' in feature_name:
-            ax.set_xscale('log')
+            ax.set_xlim(-0.25,15.25)
         
         plt.show()
 
@@ -1047,8 +1039,6 @@ def plot_dSFR_KDEs(feature_data):
     '''
     AIM: plot dlog(SFR) KDE plots for all Feature Clusters; include KS-test statistics.
     '''
-    from scipy.stats import ks_2samp
-    from itertools import combinations
     
     #if the required columns are not present, cannot run the function. derp.
     if 'delta_logsfr' not in feature_data.columns:
@@ -1103,18 +1093,16 @@ def plot_dSFR_KDEs(feature_data):
 #######################################################
 #######################################################
 
-def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=False):
+def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=False, stats=False):
     '''
     AIM: Create individual panels of the KDE distributions of k Feature Clusters separated by environment. 
+    If stats=True, will print K-S test results
     This distribution is dictated by setting one of the following variables to True:
         * dsfr = dlogSFR
         * gser = g-band Sersic Index
         * w1ser = W1 Sersic Index
     If >1 is set to True, default will be dsfr, then w1ser. 
     '''
-    
-    #from scipy.stats import ks_2samp
-    #from itertools import combinations
 
     if dsfr:
         prefix='delta_logsfr'
@@ -1202,5 +1190,84 @@ def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=Fal
         #for env==0 (first box), add legend.
         if n == 0:
             ax.legend(loc='upper right')
+            
+        # --- KS TESTTTTT --- #    
+        
+        if stats:
+            #create unique pairs for K-S TEST...
+            k_pairs = list(combinations(k_clusters, 2))
+
+            #isolate the components of each kpair, then put into ks_2samp.
+            for k1, k2 in k_pairs:
+
+                print(env_name)
+
+                ks_stat, p_value = ks_2samp(feature_data[prefix][kflags[k1] & env_mask],feature_data[prefix][kflags[k2] & env_mask])
+                print('--------------------')
+                print(f'ks stat (FG{k1} & FG{k2}): {ks_stat}')
+                print(f'p-value (FG{k1} & FG{k2}): {p_value}')
+                print('--------------------')
 
     plt.show()
+
+    
+#######################################################################
+#######################################################################
+# Plotting dSFR cumulative histograms per environment for a single FC #
+#######################################################################
+#######################################################################
+
+def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_only=False):
+    '''
+    AIM: create a single figure of the cumulative histogram curves for a given Feature Cluster in each environment.
+    * fc must be an integer
+    '''
+    
+    if dsfr:
+        prefix='delta_logsfr'
+    elif w1ser:
+        prefix='CN_W1'
+    elif gser:
+        prefix='CN_g'
+    else:
+        print('Need to set dsfr, w1ser, or gser to True.')
+        return
+    
+    #isolate all galaxies in fc
+    fc_galaxies = feature_data[feature_data['Feature Cluster']==fc]
+    
+    #create dictionary of environment name : environment flag
+    env_dict = make_env_defs(fc_galaxies, main_only=main_only)
+    
+    #initialize the figure
+    fig = plt.figure(figsize=(8,5))
+    
+    #loop through every environment
+    for i, (env_name, env_flag) in enumerate(env_dict.items()):
+        
+        plt.hist(fc_galaxies[prefix][env_flag], bins=100, linewidth=2, 
+                 cumulative=True, density=True, histtype='step', 
+                 label=env_name.replace('\n',' ').replace('   ',' '))
+
+    plt.xlabel(LABEL_DICT[prefix],fontsize=14)
+    plt.ylabel('Fraction of Galaxies',fontsize=14)
+    plt.legend()
+    
+    title_dict = {0: 'Small disks', 1: 'Spheroids', 2: 'Large disks'}
+    plt.title(f'FC{fc} ({title_dict[fc]})', fontsize=15)
+    
+    plt.show()
+    
+    #create unique pairs for K-S TEST...
+    k_pairs = list(combinations(env_dict.keys(), 2))
+    
+    #isolate the components of each kpair, then put into ks_2samp.
+    for env1, env2 in k_pairs:
+
+        ks_stat, p_value = ks_2samp(fc_galaxies[prefix][env_dict[env1]],fc_galaxies[prefix][env_dict[env2]])
+        env1_name=env1.replace('\n',' ').replace('   ',' ')
+        env2_name=env2.replace('\n',' ').replace('   ',' ')
+        print('--------------------')
+        print(f"ks stat ({env1_name} || {env2_name}): {ks_stat:.3f}")
+        print(f"p-value ({env1_name} || {env2_name}): {p_value:.3e}")
+        print('--------------------')

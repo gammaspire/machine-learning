@@ -38,7 +38,7 @@ from conversion_utils import *
 from feature_utils import get_feature_names
 from clustering_utils import find_optimal_hdbparams, run1_hdbscan, umap_2d
 
-from galfit_parameters import Params
+from init_parameters import Params
 params = Params()
 
 import numpy as np
@@ -51,11 +51,8 @@ from rich import print
 ####################################
 # RUN IT ALL RUN IT ALL RUN IT ALL #
 ####################################
-def run_hdbscan(colors=False, save_table=True):
+def run_hdbscan(colors=False,save_table=True):
     '''
-    *If colors=True, the HDBSCAN features will include the following magnitude colors:
-        *NUV - r
-        *W1 - W3
     *If save_table=True, unscaled median feature data and their uncertainties will be saved as a .csv
         *save loc will be the same as the location of galfit_kmeans.py
     *Note that these magnitudes originate from extinction-corrected photometric fluxes
@@ -65,9 +62,11 @@ def run_hdbscan(colors=False, save_table=True):
     print('NOTE: be sure to edit galfit_parameters.py so parameters are to your liking!')
     
     #pull the full list of features which will be clustered
-    features = get_feature_names(params=params, colors=colors)
+    features = get_feature_names(params=params)
     
     print(f'USING THESE FEATURES: {features}')
+    
+    params.colors=colors
     
     if params.LOADTABLE:
         print(f'Reading feature data from {params.HDBSCAN_DF_PATH}...')
@@ -75,7 +74,7 @@ def run_hdbscan(colors=False, save_table=True):
     
     else:
         #generate the dataframe
-        df_full = make_galfit_table(params, colors=colors)       
+        df_full = make_galfit_table(params)       
 
         #trim the table. remove the errors and unphysical data
         df_trimmed = trim_galfit_table(df_full, params)
@@ -99,13 +98,13 @@ def run_hdbscan(colors=False, save_table=True):
     if params.SAVETABLE:
         print(f'A copy of the scaled galaxy features was written to {params.HDBSCAN_DF_PATH}!')
         df_scaled.to_csv(params.HDBSCAN_DF_PATH, index=False)
-    
-    #read the HDBSCAN parameters from galfit_parameters.py, if defined.
+
+    #read the HDBSCAN parameters from init_parameters.py, if defined.
     MIN_CLUSTER_SIZE = params.MIN_CLUSTER_SIZE
     MIN_SAMPLES = params.MIN_SAMPLES
     METRIC = params.METRIC
     SELECTION_METHOD = params.SELECTION_METHOD
-    
+        
     #if user set this parameter to True, extract optimal values using a modified elbow method
     if params.OPTIMIZE_HDB_PARAMS:
         print('Calculating optimal HDBSCAN parameters...')
@@ -130,13 +129,12 @@ def run_hdbscan(colors=False, save_table=True):
         print(f"\n A summary of feature cluster median properties saved to {loc}:")
         cluster_summary.to_csv(loc, index=False)
     
-    if params.PLOT_MEDIANS:
-        from plotting_utils import plot_group_features
-        
-        #plot medians.
-        plot_group_features(cluster_summary, layout_dict=params.LAYOUT_DICT)
+    #if params.PLOT_MEDIANS:
+    from plotting_utils import plot_group_features
 
-    
+    #plot medians.
+    plot_group_features(cluster_summary, layout_dict=params.LAYOUT_DICT)
+
     #if user indicated a preference for a corner plot in galfit_parameters.py, oblige them
     #must precede UMAP, so that the UMAP components are not included in the analysis
     if params.PLOT_CORNER:
@@ -147,20 +145,20 @@ def run_hdbscan(colors=False, save_table=True):
     
     #if the user should like a 2D plot of the clusters...
     #use ALL OF THE DATA here
-    if params.PLOT_CLUSTERS:
-        from plotting_utils import plot_clusters
-        
-        #reduce dimensionality to 2 if desired...
-        #otherwise will default to the X and Y columns defined in galfit_parameters.py
-        if params.UMAP_FOR_PLOTTING:
-            
-            #create the Comp1, Comp2 columns. IGNORES 'Feature Cluster' column!
-            feature_data_umap = umap_2d(feature_data, features)
-            
-        #plort.
-        plot_clusters(feature_data_umap[feature_data_umap['Feature Cluster']!=-1], x=params.X, y=params.Y, 
-                      PCA=params.PCA_FOR_PLOTTING, UMAP=params.UMAP_FOR_PLOTTING)
-    
+    #if params.PLOT_CLUSTERS:
+    from plotting_utils import plot_clusters
+
+    #reduce dimensionality to 2 if desired...
+    #otherwise will default to the X and Y columns defined in galfit_parameters.py
+    if params.UMAP_FOR_PLOTTING:
+
+        #create the Comp1, Comp2 columns. IGNORES 'Feature Cluster' column!
+        feature_data_umap = umap_2d(feature_data, features)
+
+    #plort.
+    plot_clusters(feature_data_umap[feature_data_umap['Feature Cluster']!=-1], x=params.X, y=params.Y, 
+                  PCA=params.PCA_FOR_PLOTTING, UMAP=params.UMAP_FOR_PLOTTING)
+
     #self-explanatory. uninvolved. demure.
     if params.PLOT_ENV_FRACTION:
         from plotting_utils import plot_env_fraction

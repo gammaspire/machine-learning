@@ -159,7 +159,11 @@ def make_galfit_table(params):
     data_table['logmstar'], data_table['logsfr'], data_table['delta_logsfr'] = get_stellar_columns()
     
     #add a size ratio column...just because. (I actually need it for analysis. not used for clustering.)
-    data_table['Size Ratio'] = data_table['CRE_W3-fixBA'] / data_table['CRE_W1-fixBA']
+    num = data_table['CRE_W3-fixBA']  #numerator...
+    den = data_table['CRE_W1-fixBA']  #denominator...
+
+    data_table['Size Ratio'] = np.where(num != 0., num / den, np.nan)   #for cells where numerator is not 0 (indicates failure),
+                                                                       #put in size ratio; otherwise, put np.nan
     
     #add NUV-r, W1-W3 colors
     phot, ext = read_phot_tables()
@@ -219,12 +223,16 @@ def trim_ratios(df, print_=True):
     #isolate length of dataframe before mask
     ngal_before_cut=len(df)
     
-    #create a mask to isolate galaxies with a W3 SNR > 10.
-    mask = (df['SNR_W3']>10.)
+    #create a mask to isolate galaxies with a W3 SNR > 10. also -- remove W3 numerical errors and VFID1960 (the W3 image is GARBO)
+    mask = (df['SNR_W3'] > 10.) \
+            & (df['Size Ratio'].notna()) \
+            & ~(df['CNumerical_Error_W3-fixBA']) & ~(df['VFID'] == b'VFID1960') \
+            & (df['CN_W3-fixBA']<6.)
+    
     df_masked = df[mask]
     
     if print_:
-        print(f'ALERT! Removed {ngal_before_cut - len(df_masked)} after limiting W3 SNR > 10.')
+        print(f'ALERT! Removed {ngal_before_cut - len(df_masked)} after limiting W3 SNR > 10. and omitting W3 Numerical Errors.')
     
     return df_masked
 
@@ -445,11 +453,11 @@ def create_median_table(feature_data, features):
         for feature in features_unscaled:
             
             #if features are the magnitude colors, be sure to exclude invalid values
-            if feature in ['NUV_r', 'W1_W3'] and cluster_id==0:
+            if feature in ['NUV_r', 'W1_W3'] and cluster_id!=-1:
                 print(f'Calculating medians for colors -- removing invalid entries for NUV-r and W1-W3...')
                 df_cluster = trim_colors(df_cluster.copy(), print_=False)
             
-            if feature == 'Size Ratio' and cluster_id==0:
+            if feature == 'Size Ratio' and cluster_id!=-1:
                 print(f'Calculating medians for Size Ratios -- removing SNR(W3) > 10 galaxies...')
                 df_cluster = trim_ratios(df_cluster.copy(), print_=False)
             
