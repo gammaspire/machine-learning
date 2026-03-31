@@ -840,7 +840,7 @@ def feature_rainclouds(feature_data, feature_list=None):
         if feature_name in ['NUV_r','W1_W3']:
             mod_df = trim_colors(mod_df, print_=False)   #remove illegitimate magnitude entries
         elif feature_name == 'Size Ratio':
-            mod_df = trim_ratios(mod_df, print_=False)   #remove ratios calculated with W3 SNR < 10. AND those with np.nan.
+            mod_df = trim_ratios(mod_df, print_=False)   #remove ratios calculated with W3 SNR < 10. AND those with np.nan. etc.
         
         #create bool flags for each k feature cluster
         kflags = {k: (mod_df['Feature Cluster'].values==k) for k in k_clusters}
@@ -896,11 +896,11 @@ def feature_rainclouds(feature_data, feature_list=None):
             plt.scatter(features, y, s=10, c=edge_map[i], alpha=0.05)
         
         ax.set_yticks([k+1 for k in k_clusters])
-        ax.set_yticklabels([f'Feature Cluster {k}' for k in k_clusters], fontsize=15)
+        ax.set_yticklabels([f'FC{k}' for k in k_clusters], fontsize=15)
         ax.set_xlabel(get_feature_label(feature_name, LABEL_DICT), fontsize=15)   #need the fancy schmancy name
         
         if feature_name=='Size Ratio':
-            ax.set_xlim(0,4)
+            ax.set_xlim(0,3)
         if 'CRE' in feature_name:
             ax.set_xlim(-0.25,15.25)
         
@@ -996,6 +996,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr'):
         
         #add MS line!
         m, b = get_ms_line(feature_data['logmstar'], feature_data['logsfr'])
+        
         h_ms, = g.ax_joint.plot([xplot[0], xplot[-1]], [m*xplot[0]+b, m*xplot[-1]+b], color='k', 
                                   linestyle='--', alpha=0.8, linewidth=1.5)
         handles.append(h_ms)
@@ -1004,8 +1005,8 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr'):
         # --- create 2nd legend for the limit lines ---
         legend_limits = g.ax_joint.legend(handles=handles,
                                           labels=labels,
-                                          loc='lower right',
-                                          title='Completeness Limits')
+                                          loc='lower right')
+                                          #title='Completeness Limits')
 
     g.ax_joint.set_xlabel('log(Mstar)',fontsize=14)
     g.ax_joint.set_ylabel(y_label,fontsize=14)
@@ -1065,10 +1066,11 @@ def plot_dSFR_KDEs(feature_data):
         hist_plot = plt.hist(dlogsfr, color=colors[k], bins=bins,
                                 density=True, alpha=0.2, edgecolor='gray')
 
-        fig = sns.kdeplot(dlogsfr, color=colors[k], label=f'Feature Cluster {k}: {len(feature_data[kflags[k]])}')
+        fig = sns.kdeplot(dlogsfr, color=colors[k], label=f'FC{k}: {len(feature_data[kflags[k]])}')
     
-    plt.xlabel(r'$\Delta$logSFR')
-    plt.title(r'$\Delta$logSFR KDE Distribution per Feature Cluster')
+    plt.xlabel(r'$\Delta$logSFR',fontsize=14)
+    plt.ylabel('Density',fontsize=14)
+
     fig.legend()
     plt.show()   
     
@@ -1110,11 +1112,11 @@ def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=Fal
         bin_width = 0.3
     elif w1ser:
         prefix='CN_W1'
-        xlims=(0,5)
+        xlims=(0,6)
         bin_width = 0.2
     elif gser:
         prefix='CN_g'
-        xlims=(0,5)
+        xlims=(0,6)
         bin_width = 0.2
     else:
         print('Need to set dsfr, w1ser, or gser to True.')
@@ -1182,7 +1184,8 @@ def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=Fal
             kde = sns.kdeplot(x_feature, color=colors[k], label=f'Feature Cluster {k}', ax=ax)
 
         ax.set_xlim(*xlims)
-        ax.set_xlabel(xlabels[n])
+        ax.set_xlabel(xlabels[n], fontsize=14)
+        ax.set_ylabel('Density', fontsize=14)
         
         #add environment label to the plot panel
         ax.text(0.02, 0.95, env_name, transform=ax.transAxes, ha='left', va='top', fontsize=11)
@@ -1217,6 +1220,12 @@ def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=Fal
 #######################################################################
 #######################################################################
 
+#HELPER FUNCTION FOR PLOTTING THE (EMPIRICAL) CUMULATIVE DISTRIBUTION FUNCTION
+def plot_ecdf(data, **kwargs):
+    x = np.sort(data)   #sort the x data from least to greatest
+    y = np.arange(1, len(x)+1) / len(x)  #every y value from 0 to 1
+    plt.step(x, y, where='post', **kwargs)   #create the step function...
+
 def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_only=False):
     '''
     AIM: create a single figure of the cumulative histogram curves for a given Feature Cluster in each environment.
@@ -1233,6 +1242,9 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
         print('Need to set dsfr, w1ser, or gser to True.')
         return
     
+    #create colormap! ranges from 0 to 1. 
+    cmap = plt.colormaps.get_cmap('viridis_r')
+    
     #isolate all galaxies in fc
     fc_galaxies = feature_data[feature_data['Feature Cluster']==fc]
     
@@ -1245,9 +1257,13 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
     #loop through every environment
     for i, (env_name, env_flag) in enumerate(env_dict.items()):
         
-        plt.hist(fc_galaxies[prefix][env_flag], bins=100, linewidth=2, 
-                 cumulative=True, density=True, histtype='step', 
-                 label=env_name.replace('\n',' ').replace('   ',' '))
+        #cmap takes floats (cmap(float)). choose a color for the corresponding environment.
+        #if there is only one environment, default to the middle of the cmap
+        color = cmap(i / (len(env_dict) - 1)) if len(env_dict) > 1 else cmap(0.5)
+        
+        plot_ecdf(fc_galaxies[prefix][env_flag], linewidth=2,
+                                                 label=env_name.replace('\n',' ').replace('   ',' '),
+                                                 color=color)
 
     plt.xlabel(LABEL_DICT[prefix],fontsize=14)
     plt.ylabel('Fraction of Galaxies',fontsize=14)

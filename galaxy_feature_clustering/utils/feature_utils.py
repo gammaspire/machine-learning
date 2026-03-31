@@ -58,7 +58,9 @@ def make_label_dictionary():
                     'CN_r': '[r] Sersic index',
                     'NUV_r': '[NUV-r]',
                     'W1_W3': '[W1-W3]',
-                    'delta_logsfr': '$\Delta$logSFR'}
+                    'Size Ratio': r'Size Ratio [$Re_{W3}$ / $Re_{W1}$]',
+                    'delta_logsfr': '$\Delta$logSFR',
+                    'logmstar': 'logM$_*$/M$_\odot$'}
     
     return feature_dict
 

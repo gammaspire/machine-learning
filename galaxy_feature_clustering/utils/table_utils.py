@@ -29,7 +29,7 @@ def read_phot_tables():
     radec_cols = ['RA_MOMENT', 'DEC_MOMENT']
     
     #one more column...bright star flag!
-    bs_col = ['BRIGHTSTAR', 'MEDIUMSTAR']
+    bs_col = ['NEARBYSTAR']
     
     phot = Table.read('data/vf_v2_legacy_ephot.fits')[flux_cols+ivar_cols+radec_cols+bs_col]   
     
@@ -182,9 +182,8 @@ def make_galfit_table(params):
     data_table['SNR_g'] = calculate_SNR(phot['FLUX_AP06_G'], phot['FLUX_IVAR_AP06_G'])
     data_table['SNR_NUV'] = calculate_SNR(phot['FLUX_AP06_NUV'], phot['FLUX_IVAR_AP06_NUV'])
     
-    #add bright star flag!
-    data_table['BRIGHTSTAR_FLAG'] = phot['BRIGHTSTAR']
-    data_table['MEDIUMSTAR_FLAG'] = phot['MEDIUMSTAR']
+    #add nearby bright star flag!
+    data_table['NEARBYSTAR'] = phot['NEARBYSTAR']
     
     data_table = data_table.to_pandas()
 
@@ -280,7 +279,7 @@ def trim_galfit_table(full_df, params):
     print(f'ALERT! Removing {len(df_two) - len(df_three)} with a GALFIT numerical error.')
     
     #apply the bright star flag (from JM's photometry catalog)
-    bs_flag = df_three['BRIGHTSTAR_FLAG'] & df_three['MEDIUMSTAR_FLAG']
+    bs_flag = df_three['NEARBYSTAR']
     df_bs = df_three.loc[~bs_flag]
     print(f'ALERT! Removing {np.sum(bs_flag)} galaxies with a nearby bright star.')
     
@@ -444,22 +443,24 @@ def create_median_table(feature_data, features):
     summary_rows = []
     
     #for every cluster_id (e.g., k=0), isolate the rows which belong to that cluster_id
-    for cluster_id, df_cluster in feature_data.groupby("Feature Cluster"):
+    for cluster_id, df_cluster_all in feature_data.groupby("Feature Cluster"):
 
+        df_cluster = df_cluster_all.copy()  #avoids rewriting the table...
+        
         #create a dictionary. will be adding medians and such in the loop below.
         row = {"Feature Cluster": cluster_id}
 
         #now, for every (unscaled) feature...
         for feature in features_unscaled:
-            
+                        
             #if features are the magnitude colors, be sure to exclude invalid values
             if feature in ['NUV_r', 'W1_W3'] and cluster_id!=-1:
                 print(f'Calculating medians for colors -- removing invalid entries for NUV-r and W1-W3...')
-                df_cluster = trim_colors(df_cluster.copy(), print_=False)
+                df_cluster = trim_colors(df_cluster_all.copy(), print_=False)
             
             if feature == 'Size Ratio' and cluster_id!=-1:
                 print(f'Calculating medians for Size Ratios -- removing SNR(W3) > 10 galaxies...')
-                df_cluster = trim_ratios(df_cluster.copy(), print_=False)
+                df_cluster = trim_ratios(df_cluster_all.copy(), print_=False)
             
             #isolate the feature from the cluster_id data
             arr = df_cluster[feature].values
