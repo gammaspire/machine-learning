@@ -127,7 +127,7 @@ EXCLUDE_OUTLIERS=['VFID0293','VFID0455','VFID0800','VFID1435','VFID1580','VFID17
                   'VFID2996','VFID3127','VFID3155','VFID3470','VFID3649','VFID4056',
                   'VFID4064','VFID4086','VFID4186','VFID4196','VFID4390','VFID4587',
                   'VFID4717','VFID5056','VFID5204','VFID5289','VFID5234','VFID5289',
-                  'VFID5515','VFID5747','VFID6042']  #33
+                  'VFID5515','VFID5725','VFID5747','VFID6042']  #34
 
 #galaxies with models adversely affected by prominent and/or unmasked foreground stars. found via visual inspection.
 EXCLUDE_BRIGHTSTARS=['VFID0035','VFID0051','VFID0067','VFID0584','VFID0711','VFID0712',
@@ -136,8 +136,8 @@ EXCLUDE_BRIGHTSTARS=['VFID0035','VFID0051','VFID0067','VFID0584','VFID0711','VFI
                      'VFID3863','VFID3924','VFID4787','VFID5021','VFID5291','VFID5341',
                      'VFID5372']  #25
 
-#full galaxy exclusion list
-#EXCLUDE_LIST=EXCLUDE_OUTLIERS+EXCLUDE_BRIGHTSTARS
+#set to True to exclude the above galaxies; set to False to include them.
+EXCLUDE_LIST=True
 
 '''
 #number of clusters to use for kmeans

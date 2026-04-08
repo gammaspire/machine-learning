@@ -63,7 +63,9 @@ def get_env_columns():
 
 
 def get_stellar_columns():
-    
+    '''
+    Aim: return log(mstar), log(sfr), and delta_log(sfr) columns
+    '''
     from data_utils import get_ms_line, get_delta_logsfr
     
     cigale = Table.read('data/cigale_vf_metallicity.fits')
@@ -85,15 +87,43 @@ def get_stellar_columns():
 #   * Suppressed
 ###################################################
 
+def get_dsfr_stdev(df):
+    '''
+    AIM: calculate the 1-sigma deviation from the main sequence line.
+    * the 1-sigma deviation is found by evaluating the STDEV of the residuals (SFR_CIGALE - SFR_PREDICTED)
+        * these residuals are delta_logsfr!
+    * ALL Virgo galaxies with log(sSFR)>-11.5, as with the MS equation, should be included in this calculation.
+    
+    * This function is a companion to dsfr_columns to define the populations!
+        * main sequence: delta_SFR +/- 1.5*sigma
+        * suppressed (transition): X*sigma < delta_SFR <= 1.5*sigma, where X is some integer (default is 3)
+        * passive: X*sigma < delta_SFR
+    '''
+    
+    if 'delta_logsfr' not in df.columns:
+        print('Cannot calculate stdev for delta_logsfr if delta_logsfr is not a column!')
+        return
+    
+    #isolate ssfr>-11.5 galaxies
+    from data_utils import ssfr_flag
+    salim_flag = ssfr_flag(df['logmstar'], df['logsfr'])
+    
+    dsfr = df['delta_logsfr'][salim_flag]
+    
+    return np.std(dsfr, ddof=1)
+    
+    
 def dsfr_columns(df, n_pop):
     '''
     Aim: Create bool columns to isolate the dSFR populations.
     * df --> dataframe of galaxies with dSFR column
     * pop_list --> number of populations (integer; 2 or 3)
-        * 3 --> main sequence, transition, suppressed (respectively)
-        * 2 --> main sequence, suppressed (respectively)
+        * 3 --> main sequence (1), suppressed (2), passive (3), respectively
+        * 2 --> main sequence (1), passive (2), respectively
     Result: row-matched boolean flags for each population type!
     '''
+    
+    one_sigma = get_dsfr_stdev()
     
     if 'delta_logsfr' not in df.columns:
         print('Cannot add dSFR bool columns! Need "delta_logsfr" column to continue.')
@@ -101,17 +131,24 @@ def dsfr_columns(df, n_pop):
         
     #if only two populations given, then separate into main sequence and suppressed
     if n_pop==2:
-        pop1_flag = (df['delta_logsfr']>-1.)
-        pop3_flag = (df['delta_logsfr']<=-1.)
-    
-    #if three populations given, then separate into main sequence, transition, and suppressed
-    elif n_pop==3:
-        pop1_flag = (df['delta_logsfr']>-0.5)
-        pop2_flag = (df['delta_logsfr']<=-0.5) & (df['delta_logsfr']>=-2.)
-        pop3_flag = (df['delta_logsfr']<-2.)
         
-        #add transition flag
-        df['transition_pop'] = pop2_flag
+        #between -2*sig and 2*sig
+        pop1_flag = (df['delta_logsfr']<=one_sigma*2) & (df['delta_logsfr']>-one_sigma*2)
+        
+        #less than -2*sig
+        pop3_flag = (df['delta_logsfr']<=-one_sigma*2)
+    
+    #if three populations given, then separate into main sequence, suppressed, passive
+    elif n_pop==3:
+        
+        pop1_flag = (df['delta_logsfr']<=one_sigma*1.5) & (df['delta_logsfr']>-one_sigma*1.5)
+        
+        pop2_flag = (df['delta_logsfr']<=-one_sigma*1.5) & (df['delta_logsfr']>=-one_sigma*3.)
+        
+        pop3_flag = (df['delta_logsfr']<-one_sigma*3.)
+        
+        #add suppressed flag
+        df['suppressed_pop'] = pop2_flag
     
     else:
         print('Number of populations must be 2-3. Unable to continue.')
@@ -119,7 +156,7 @@ def dsfr_columns(df, n_pop):
     
     #add main sequence, suppressed flags
     df['ms_pop'] = pop1_flag
-    df['suppressed_pop'] = pop3_flag
+    df['passive_pop'] = pop3_flag
     
     #return the updated dataframe
     return df
@@ -281,7 +318,7 @@ def trim_galfit_table(full_df, params):
     #apply the bright star flag (from JM's photometry catalog)
     bs_flag = df_three['NEARBYSTAR']
     df_bs = df_three.loc[~bs_flag]
-    print(f'ALERT! Removing {np.sum(bs_flag)} galaxies with a nearby bright star.')
+    print(f'ALERT! Removing {np.sum(bs_flag)} galaxies with a nearby bright star (SGA-2020 bitmask).')
     
     #apply the logMstar, logSFR completeness limit flags. 
     #note: if either or both set to None in init_parameters.py, then this function will do nothing.
@@ -300,11 +337,15 @@ def trim_galfit_table(full_df, params):
     #and lastly...
     
     #if user specified VFIDs to exclude in init_parameters.py, this is the time to create the flag
-    if params.EXCLUDE_LIST is not None:
-        exclude_flag = [VFID.decode('utf-8') not in params.EXCLUDE_LIST for VFID in df_five['VFID']]
+    if params.EXCLUDE_LIST:
+        exclude_stars_flag = np.asarray([VFID.decode('utf-8') not in params.EXCLUDE_BRIGHTSTARS for VFID in df_five['VFID']])
+        exclude_outliers_flag = np.asarray([VFID.decode('utf-8') not in params.EXCLUDE_OUTLIERS for VFID in df_five['VFID']])
+        exclude_flag = (exclude_stars_flag & exclude_outliers_flag)
         df_five = df_five[exclude_flag]
-        print(f'ALERT! Removed {np.sum(~np.asarray(exclude_flag))} galaxies after excluding VFIDs from init_parameters.py.')
-    
+        print(f'ALERT! Removed {np.sum(~exclude_stars_flag)} galaxies after excluding VFIDs with bright stars (from init_parameters.py).')
+        print(f'ALERT! Removed {np.sum(~exclude_outliers_flag)} galaxies after excluding outlier VFIDs (from init_parameters.py).')
+        print(f'Combined (accounting for duplicates), this totals to {np.sum(~exclude_flag)} galaxies (from init_parameters.py).')
+        
     message=f'Removed {ngal_before - len(df_five)}/{ngal_before}  galaxies in total. This leaves {len(df_five)} galaxies. Wow.'        
     
     print('#'*len(message))

@@ -99,6 +99,21 @@ def binomial_uncertainty(N_subset, N_total):
     return unc
 
 
+########################################
+# GET sSFR>-11.5 FLAG (FROM SALIM+2018 #
+########################################
+
+def ssfr_flag(mstar_array, sfr_array):
+    '''
+    AIM: return salim+2018 log(sSFR)>-11.5 flag, row-matched to input logmstar and logsfr arrays.
+    '''
+    
+    logsSFR = sfr_array - mstar_array
+    salim_flag = (logsSFR > -11.5)
+    
+    return salim_flag
+
+
 #########################################
 # GET SFRvMSTAR MAIN SEQUENCE EQUATION  #
 #########################################
@@ -111,9 +126,7 @@ def get_ms_line(mstar_array, sfr_array):
     (Salim+2018)" -- Conger+2025
     '''
     
-    #create the Salim+2018 sSFR cut
-    logsSFR = sfr_array - mstar_array
-    salim_flag = (logsSFR > -11.5)
+    salim_flag = ssfr_flag(mstar_array, sfr_array)
     
     m, b = np.polyfit(mstar_array[salim_flag], sfr_array[salim_flag], deg=1)
     

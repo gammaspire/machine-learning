@@ -648,9 +648,11 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
     plt.show()
     return
 
-def virgowise_median_plot(feature_data):
+
+def virgowise_median_plot(feature_data, plot_paper1=False):
     '''
     AIM: for each of the feature clusters, reproduce median size ratio vs. environment plot from Conger+2025.
+    plot_paper1 : bool, indicates whether plots should include the conger+2025 medians+uncertainties
     '''
         
     #define Feature Cluster colors
@@ -726,15 +728,28 @@ def virgowise_median_plot(feature_data):
         ax.grid(alpha=0.2)
         ax.set_ylabel(r'R$_{12}$/R$_{3.4}$',fontsize=20)
         
-        ax.legend(loc='upper left',fontsize=14)
+        #include results from Virgo Filaments I (Conger+2025 -- that's me)
+        if plot_paper1:
+            medians=[0.848,0.928,0.920,0.879,0.949]
+            lower=[0.819,0.909,0.901,0.856,0.939]
+            upper=[0.880,0.950,0.933,0.906,0.954]
+            ax.scatter(index,medians,color='gray',s=50,zorder=2,edgecolors='black',alpha=0.3,label=f'Conger+2025')
+            ins.scatter(index,medians,color='gray',s=50,zorder=2,edgecolors='black',alpha=0.3)
         
+            for n in range(5):
+                ax.plot([index[n],index[n]], [lower[n],upper[n]], color='black', zorder=1, alpha=0.3)
+                ins.plot([index[n],index[n]], [lower[n],upper[n]], color='black', alpha=0.3)
+        
+            ins.set_ylim(0.67,1.09)
+            
+        ax.legend(loc='upper left',fontsize=14)
         plt.show()
 
 
 def plot_median_nser_pop(feature_data, n_pop):    
     '''
     Aim: Use plot_group_features to generate n_pop 1x2 subplots of Sersic index distributions for the Feature Clusters.
-    * This code is for a specific set of science plots involving W1 and g-band! Also 
+    * This code is for a specific set of science plots involving W1 and g-band!
     '''
     from table_utils import dsfr_columns, create_median_table
 
@@ -893,7 +908,7 @@ def feature_rainclouds(feature_data, feature_list=None):
             y += np.random.uniform(low=-0.05, high=0.05, size=len(y))
             
             #now...plot the scattered points.
-            plt.scatter(features, y, s=10, c=edge_map[i], alpha=0.05)
+            plt.scatter(features, y, s=10, c=edge_map[i], alpha=0.2)
         
         ax.set_yticks([k+1 for k in k_clusters])
         ax.set_yticklabels([f'FC{k}' for k in k_clusters], fontsize=15)
@@ -913,7 +928,7 @@ def feature_rainclouds(feature_data, feature_list=None):
 #############################################
 #############################################
 
-def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr'):
+def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', rectangle=True):
     '''
     AIM: plot Feature Clusters on [delta_logSFR] vs. [logMstar] axes.
     * Alternatively plots [logSFR] vs. [logMstar] with completeness limits shown.
@@ -948,28 +963,29 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr'):
     if y=='delta_logsfr':
         y_label = r'$\Delta$log(SFR)'
         
-        #    add population rectangles!
-        # main sequence   -0.5 < dsfr
-        # transitioning   -2.0 < dsfr < -0.5
-        # suppressed      dsfr < -2.0
-        
-        from matplotlib.patches import Rectangle
-        
-        xmin, xmax = g.ax_joint.get_xlim()   #get width of x-axis for rectangles
-        width = xmax - xmin
-        ymin, ymax = g.ax_joint.get_ylim()   #get y-axis limits for rectangle
+        if 'rectangle':
+            #    add population rectangles!
+            # main sequence   -0.5 < dsfr
+            # transitioning   -2.0 < dsfr < -0.5
+            # suppressed      dsfr < -2.0
 
-        #(lower left coordinate), width of rectangle, height of rectangle
-        rect_ms = Rectangle((xmin, -0.5), width, ymax - (-0.5),        #height from -0.5 to ymax
-                            facecolor='lightblue', alpha=0.2, edgecolor='blue', zorder=0)
-        rect_trans = Rectangle((xmin,-2.0), width, (-0.5) - (-2.0),    #height = 1.5 (from -2.0 to -0.5)
-                               facecolor='gray', alpha=0.2, edgecolor='black', zorder=0)
-        rect_sup = Rectangle((xmin,ymin), width, -2.0-ymin,            #height from ymin to -2.0
-                               facecolor='orangered', alpha=0.2, edgecolor='crimson', zorder=0)
-        
-        g.ax_joint.add_patch(rect_ms)
-        g.ax_joint.add_patch(rect_trans)
-        g.ax_joint.add_patch(rect_sup)
+            from matplotlib.patches import Rectangle
+
+            xmin, xmax = g.ax_joint.get_xlim()   #get width of x-axis for rectangles
+            width = xmax - xmin
+            ymin, ymax = g.ax_joint.get_ylim()   #get y-axis limits for rectangle
+
+            #(lower left coordinate), width of rectangle, height of rectangle
+            rect_ms = Rectangle((xmin, -0.5), width, ymax - (-0.5),        #height from -0.5 to ymax
+                                facecolor='lightblue', alpha=0.2, edgecolor='blue', zorder=0)
+            rect_trans = Rectangle((xmin,-2.0), width, (-0.5) - (-2.0),    #height = 1.5 (from -2.0 to -0.5)
+                                   facecolor='gray', alpha=0.2, edgecolor='black', zorder=0)
+            rect_sup = Rectangle((xmin,ymin), width, -2.0-ymin,            #height from ymin to -2.0
+                                   facecolor='orangered', alpha=0.2, edgecolor='crimson', zorder=0)
+
+            g.ax_joint.add_patch(rect_ms)
+            g.ax_joint.add_patch(rect_trans)
+            g.ax_joint.add_patch(rect_sup)
 
     else:
         y_label='log(SFR)'
@@ -985,14 +1001,14 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr'):
             h_mstar = g.ax_joint.axvline(x=mstar_lim, color='blue', linestyle='--', alpha=0.9, 
                                          linewidth=1.5)
             handles.append(h_mstar)
-            labels.append('log(Mstar) limit')
+            labels.append(f'log(Mstar) > {mstar_lim}')
         
         xplot = np.sort(feature_data['logmstar'],axis=None)
         
         h_ssfr, = g.ax_joint.plot([xplot[0],xplot[-1]], [-11.5+xplot[0],-11.5+xplot[-1]], color='gray', 
                                   linestyle='-.', alpha=1, linewidth=1.5)
         handles.append(h_ssfr)
-        labels.append('log(sSFR) limit')
+        labels.append('log(sSFR) > -11.5')
         
         #add MS line!
         m, b = get_ms_line(feature_data['logmstar'], feature_data['logsfr'])
@@ -1179,9 +1195,12 @@ def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=Fal
                 continue
             
             bins = np.arange(xlims[0], xlims[1] + bin_width, bin_width) 
+            
             hist_plot = ax.hist(x_feature, color=colors[k], bins=bins,
                                 density=True, alpha=0.2, edgecolor='gray')
-            kde = sns.kdeplot(x_feature, color=colors[k], label=f'Feature Cluster {k}', ax=ax)
+            
+            kde = sns.kdeplot(x_feature, color=colors[k], label=f'Feature Cluster {k}', ax=ax,
+                             common_norm=False)
 
         ax.set_xlim(*xlims)
         ax.set_xlabel(xlabels[n], fontsize=14)
@@ -1261,10 +1280,15 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
         #if there is only one environment, default to the middle of the cmap
         color = cmap(i / (len(env_dict) - 1)) if len(env_dict) > 1 else cmap(0.5)
         
-        plot_ecdf(fc_galaxies[prefix][env_flag], linewidth=2,
-                                                 label=env_name.replace('\n',' ').replace('   ',' '),
-                                                 color=color)
-
+        if i==0:
+            plot_ecdf(fc_galaxies[prefix][env_flag], linewidth=2,
+                                                     label=env_name.replace('\n',' ').replace('   ',' '),
+                                                     color='gold')
+        else:
+            plot_ecdf(fc_galaxies[prefix][env_flag], linewidth=2,
+                                                     label=env_name.replace('\n',' ').replace('   ',' '),
+                                                     color=color)
+            
     plt.xlabel(LABEL_DICT[prefix],fontsize=14)
     plt.ylabel('Fraction of Galaxies',fontsize=14)
     plt.legend()
