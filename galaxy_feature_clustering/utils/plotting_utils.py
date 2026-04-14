@@ -94,13 +94,13 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     #sort the unique Feature Clusters numerically
     unique_clusters = sorted(feature_data['Feature Cluster'].unique())
     
-    #create custom label map! example -- [0: 'FC0 (Ngal)']
+    # -- 
+    #NOTE: these maps make easier the use of sns scatterplots...
+    # --
+    
+    #create custom label map! example -- {0: 'FC0 (Ngal)'}
     label_map= {c: f"FC{c} ({len(feature_data[feature_data['Feature Cluster']==c])})" for c in unique_clusters if c!=-1}
-    
-    #create a dictionary mapping each color to a Feature Cluster --> {k: color}
     color_map = {label_map[c]: cluster_colors[i] for i, c in enumerate(unique_clusters)}
-    
-    #create a dictionary mapping each marker shape to a Feature Cluster --> {k: shape}
     marker_map = {label_map[c]: cluster_shapes[i] for i, c in enumerate(unique_clusters)}
     
     #PCA and UMAP flag
@@ -251,11 +251,6 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
         print('"Feature Cluster" column not found. Please run k-means or HDBSCAN clustering before continuing!')
         return
     
-    #create dictionaries!
-    color_map  = {c: colors[i]        for i, c in enumerate(unique_clusters)}
-    edge_map   = {c: edgecolors[i]    for i, c in enumerate(unique_clusters)}
-    shape_map  = {c: marker_shapes[i] for i, c in enumerate(unique_clusters)}
-    
     #create indices for these galaxies (for the x-axis)
     index = np.arange(1,len(env_names)+1,1)
     
@@ -349,24 +344,24 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
             #define label for legend, but only for the first point of each FG (to avoid redundancies)
             label_ = None if i!=0 else f'FC{k_cluster} ({Ngal_feature_group})'
             
-            ax.scatter(index[i], fraction,  color=color_map[k_cluster], label=label_, s=90, 
-                       edgecolor=edge_map[k_cluster], marker=shape_map[k_cluster], zorder=3)
+            ax.scatter(index[i], fraction,  color=colors[k_cluster], label=label_, s=90, 
+                       edgecolor=edgecolors[k_cluster], marker=marker_shapes[k_cluster], zorder=3)
             
             #plot the asymmetric error bars
             err = ax.plot([index[i], index[i]], [fraction-unc_low, fraction+unc_up], 
-                          color=color_map[k_cluster], alpha=0.5, lw=2.5, zorder=2)
+                          color=colors[k_cluster], alpha=0.5, lw=2.5, zorder=2)
 
     for k_cluster in unique_clusters:
         
         #connect the dots using the stored values
-        ax.plot(line_x[k_cluster], line_y[k_cluster], color=edge_map[k_cluster], 
+        ax.plot(line_x[k_cluster], line_y[k_cluster], color=edgecolors[k_cluster], 
                 linewidth=2.2, alpha=0.3, zorder=1)
         
         #create shaded regions between uncertainties, also using stored values!
         ax.fill_between(line_x[k_cluster], 
                         np.asarray(line_y[k_cluster])-np.asarray(err_y_low[k_cluster]), 
                         np.asarray(line_y[k_cluster])+np.asarray(err_y_up[k_cluster]), 
-                        color=color_map[k_cluster], alpha=0.2, zorder=0)
+                        color=colors[k_cluster], alpha=0.2, zorder=0)
     
     ax.set_xticks(index, env_names, rotation=45, fontsize=15)
     ax.tick_params(axis='both', which='major', labelsize=12)
@@ -379,140 +374,6 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
     
     ax.legend(loc=legend_loc, fontsize=14)
     
-    plt.show()
-
-
-def plot_env_stacked_hist(feature_data, main_only=False):
-    '''
-    AIM:
-        For each environment, plot the fractional composition of Feature Clusters as a stacked histogram.
-
-    INTERPRETATION:
-        "Given a galaxy in environment E, what is the probability it belongs
-         to Feature Cluster k?"
-
-    main_only:
-        If True, restricts to the five primary environments.
-    '''
-
-    #color/marker bookkeeping
-    colors, edgecolors, marker_shapes = marker_palette(feature_data)
-
-    #define environments using boolean masks
-    env_defs = make_env_defs(feature_data, main_only=main_only)
-        
-    #isolate the name strings
-    env_names = list(env_defs.keys())
-
-    #identify Feature Clusters (ignore noise if present)
-    feature_groups = sorted(c for c in feature_data['Feature Cluster'].unique() if c != -1)
-
-    #number of environments and Feature Clusters!
-    n_env = len(env_names)
-    n_fg  = len(feature_groups)
-
-    #storage array for fractions...
-    fractions = np.zeros((n_env, n_fg))
-
-    #now compute the fractions
-    for i, (env_name, env_flag) in enumerate(env_defs.items()):
-
-        #find subset of galaxies belonging to environment E
-        env_data = feature_data[env_flag]
-        total = len(env_data)   #total galaxies in environment E
-
-        for j, k in enumerate(feature_groups):
-
-            #number of galaxies in environment E AND Feature Cluster k
-            subset = np.sum(env_data['Feature Cluster'] == k)
-
-            #avoid division by zero (empty environments)
-            if total == 0:
-                fractions[i, j] = 0.0
-                continue
-
-            #fraction
-            fractions[i, j] = subset / total   #ith environment (row), jth Feature Cluster (column)
-
-    #PLOTTING ZEIT
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    #tracks the bottom of each stacked bar. this prevents the components from overlapping!
-    bottom = np.zeros(n_env)
-
-    #x locations for environments
-    x = np.arange(n_env)
-
-    #draw stacked bars
-    for j, k in enumerate(feature_groups):
-
-        ax.bar( x,
-                fractions[:, j],
-                bottom=bottom,
-                color=colors[j],
-                edgecolor=edgecolors[j],
-                label=f'Feature Cluster {k}',
-                zorder=2)
-
-        #update bottom for next Feature Cluster
-        bottom += fractions[:, j]
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(env_names, rotation=45, fontsize=13)
-    ax.set_ylabel('Fraction of Galaxies', fontsize=15)
-    ax.set_ylim(0, 1)
-
-    #ax.set_title('Feature Cluster Composition by Environment', fontsize=16)
-
-    ax.grid(axis='y', alpha=0.25)
-    #ax.legend(title='Feature Cluster', bbox_to_anchor=(1.02, 1),
-    #          loc='upper left', frameon=False)
-
-    plt.tight_layout()
-    plt.show()
-    
-
-################################################
-################################################
-# Plotting Feature Cluster Physical Properties #
-################################################
-################################################
-
-def plot_corner(feature_data, features=None):
-    #suppress those WARNINGS PLS
-    import warnings
-    warnings.filterwarnings('ignore', category=FutureWarning)
-        
-    cluster_colors, _, _ = marker_palette(feature_data)
-    
-    #we want to plot the UNSCALED features!
-    #I am also dictating the plotted features. not oops.
-    if features is None:
-        features=['CRE_W1-fixBA_unscaled', 'CN_W1-fixBA_unscaled', 
-                  'CRE_W3-fixBA_unscaled', 'CN_W3-fixBA_unscaled',
-                  'CRE_g_unscaled', 'CN_g_unscaled']
-        #if 'AVG_RE_gr_unscaled' in feature_data.columns:
-        #    features[4] = 'AVG_RE_gr_unscaled'
-        #if 'AVG_RE_W1W2_unscaled' in feature_data.columns:
-        #    features[0] = 'AVG_RE_W1W2_unscaled'
-    
-    unique_clusters = sorted(feature_data['Feature Cluster'].unique())
-    color_map = {c: cluster_colors[i] for i, c in enumerate(unique_clusters)}
-
-    g = sns.pairplot(feature_data, vars=features, hue='Feature Cluster', 
-                     palette=color_map, corner=True,
-                     plot_kws={'alpha': 0.6, 's': 20}, diag_kind=None)  #'kde')
-
-    #pull the axes from the corner plot
-    axes_flat = [ax for ax in g.axes.flat if ax is not None]
-    for ax in axes_flat:
-        if ax.get_xlabel():
-            ax.set_xlabel(get_feature_label(ax.get_xlabel(), LABEL_DICT))
-        if ax.get_ylabel():
-            ax.set_ylabel(get_feature_label(ax.get_ylabel(), LABEL_DICT))
-    
-    g._legend.remove()
-    #g.fig.suptitle('Feature Clusters in Physical Space', y=1.02)
     plt.show()
 
     
@@ -581,7 +442,7 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
     #INITIATE
     fig, axes = plt.subplots(nrows=nrow, ncols=ncol, figsize=(fig_width, fig_height), constrained_layout=True)
     
-    axes = np.atleast_2d(axes)
+    axes = np.atleast_2d(axes)   #so that I can use i,j indices
     
     #read values from the dictionary, 
     for (i, j), med_label in layout_dict.items():        
@@ -743,61 +604,8 @@ def virgowise_median_plot(feature_data, plot_paper1=False):
             ins.set_ylim(0.67,1.09)
             
         ax.legend(loc='upper left',fontsize=14)
-        plt.show()
-
-
-def plot_median_nser_pop(feature_data, n_pop):    
-    '''
-    Aim: Use plot_group_features to generate n_pop 1x2 subplots of Sersic index distributions for the Feature Clusters.
-    * This code is for a specific set of science plots involving W1 and g-band!
-    '''
-    from table_utils import dsfr_columns, create_median_table
-
-    if n_pop not in [2,3]:
-        print('n_pop variable must be 2 or 3. Unable to continue. Gob job.')
-        return
-    
-    layout_dict =  {(0, 0): 'CN_g_unscaled',
-                    (0, 1): 'CN_W1-fixBA_unscaled'}
-
-    df = dsfr_columns(feature_data, n_pop)
-
-    for pop in ['ms_pop','transition_pop','suppressed_pop']:
-        if (pop=='transition_pop') and (n_pop==2):
-            continue #go to next iteration; if n_pop=2, then there is no transition population
-        print(pop)
-        flag=df[pop]
-        df_med = create_median_table(df[flag], ['CN_g','CN_W1-fixBA'])  
-        plot_group_features(df_med, layout_dict=layout_dict, nser_ylim=None, re_ylim=None)
+        plt.show()        
         
-        
-def plot_ttype_pop(feature_data, n_pop):    
-    '''
-    Aim: Use plot_group_features to generate n_pop (2 or 3) 1x2 subplots of Sersic index distributions for the Feature Clusters.
-    * This code is for a specific set of science plots involving W1 and g-band!
-    '''
-    from table_utils import dsfr_columns, create_median_table
-
-    if n_pop not in [2,3]:
-        print('n_pop variable must be 2 or 3. Unable to continue. Gob job.')
-        return
-
-    df = dsfr_columns(feature_data, n_pop)
-
-    for pop in ['ms_pop','transition_pop','suppressed_pop']:
-        if (pop=='transition_pop') and (n_pop==2):
-            continue #go to next iteration; if n_pop=2, then there is no transition population
-        flag=df[pop]
-        
-        #drop any NaN values, indicating that the galaxy has no t-type available
-        init_len = len(df[flag])
-        df = df.copy().dropna(subset=['t_type'])
-        post_len = len(df[flag])
-        
-        print(f'Dropping {init_len-post_len} NaN values from {pop} samples.')
-                
-        feature_rainclouds(df[flag], feature_list=['t_type'])
-
 
 def feature_rainclouds(feature_data, feature_list=None):
     '''
@@ -921,6 +729,149 @@ def feature_rainclouds(feature_data, feature_list=None):
         
         plt.show()
 
+        
+####################################################################
+####################################################################
+# Plotting Feature Cluster Physical Properties per dSFR Population #
+####################################################################
+####################################################################
+
+def plot_median_nser_pop(feature_data, n_pop):    
+    '''
+    Aim: Use plot_group_features to generate n_pop 1x2 subplots of Sersic index distributions for the Feature Clusters.
+    * This code is for a specific set of science plots involving W1 and g-band!
+    '''
+    from table_utils import dsfr_columns, create_median_table
+
+    if n_pop not in [2,3]:
+        print('n_pop variable must be 2 or 3. Unable to continue. Gob job.')
+        return
+    if 'ms_pop' not in feature_data.columns:
+        print('Need to run $/table_utils/dsfr_columns.py before creating this plot.')
+        return
+    
+    layout_dict =  {(0, 0): 'CN_g_unscaled',
+                    (0, 1): 'CN_W1-fixBA_unscaled'}
+
+    df = dsfr_columns(feature_data, n_pop)
+
+    for pop in ['ms_pop','suppressed_pop','passive_pop']:
+        if (pop=='suppressed_pop') and (n_pop==2):
+            continue #go to next iteration; if n_pop=2, then there is no transition population
+        print(pop)
+        flag=df[pop]
+        df_med = create_median_table(df[flag], ['CN_g','CN_W1-fixBA'])  
+        plot_group_features(df_med, layout_dict=layout_dict, nser_ylim=None, re_ylim=None)
+        
+        
+def plot_ttype_pop(feature_data, n_pop):    
+    '''
+    Aim: Use plot_group_features to generate n_pop (2 or 3) 1x2 subplots of Sersic index distributions for the Feature Clusters.
+    * This code is for a specific set of science plots involving W1 and g-band!
+    '''
+    from table_utils import dsfr_columns, create_median_table
+
+    if n_pop not in [2,3]:
+        print('n_pop variable must be 2 or 3. Unable to continue. Gob job.')
+        return
+    if 'suppressed_pop' not in feature_data.columns:
+        print('Need to run $/table_utils/dsfr_columns.py before creating this plot.')
+        return
+
+    df = dsfr_columns(feature_data, n_pop)
+
+    for pop in ['ms_pop','suppressed_pop','passive_pop']:
+        if (pop=='ms_pop') and (n_pop==2):
+            continue #go to next iteration; if n_pop=2, then there is no transition population
+        flag=df[pop]
+        
+        #drop any NaN values, indicating that the galaxy has no t-type available
+        init_len = len(df[flag])
+        df = df.copy().dropna(subset=['t_type'])
+        post_len = len(df[flag])
+        
+        print(f'Dropping {init_len-post_len} NaN values from {pop} samples.')
+                
+        feature_rainclouds(df[flag], feature_list=['t_type'])
+
+
+def plot_pop_frac(feature_data, n_pop=4):
+    '''
+    Aim: Create scatterplot of the fractional composition of each FC per dSFR population: main sequence, suppressed, and passive.
+        * roughly mimics the setup of env_fraction
+    '''
+    if n_pop not in [2,3]:
+        print('n_pop variable must be 2 or 3. Unable to continue. Gob job.')
+        return
+    if 'ms_pop' not in feature_data.columns:
+        print('Need to run $/table_utils/dsfr_columns.py before creating this plot.')
+        return
+    
+    #create array of k values
+    try:
+        unique_clusters = sorted(np.unique(feature_data['Feature Cluster']))
+    except:
+        print('"Feature Cluster" column not found. Please run k-means or HDBSCAN clustering before continuing!')
+        return
+    
+    #define Feature Cluster colors
+    colors, edgecolors, marker_shapes = marker_palette(feature_data)
+        
+    #define x-axis indices...
+    index = np.arange(1,n_pop+1,1)
+    
+    #dSFR population flags
+    pop_dict = {'ms_pop':'Main\n Sequence','suppressed_pop':'Suppressed','passive_pop':'Passive'}
+    dsfr_flags = [feature_data[name] for name in pop_dict.keys()]
+    
+    #initialize the figure
+    fig, ax = plt.subplots(1,1,figsize=(7,5))
+    
+    #now, loop through every k cluster and plottt.
+    for k_cluster in unique_clusters:
+        
+        #isolate total number of galaxies in the FC
+        fc_total = len(feature_data[feature_data['Feature Cluster']==k_cluster])
+
+        #of the galaxies in the feature cluster, how many belong to x dSFR population?
+        
+        #creates an array of 0s and 1s; 1=part of subset, 0=not part of subset
+        #the average of this, in fact, IS the subset / total fraction!
+        #do this N times, once per population type -- creates a list of length N
+        subset_data = [(x[feature_data['Feature Cluster'] == k_cluster].values).astype(int) for x in dsfr_flags]
+        
+        #calculate fraction and bootstrap uncertainty
+        #the uncertainty is on the mean of the data. remember that mean = subset/total when we convert
+        #the subset array to 0s and 1s.
+        fractions = [np.mean(dat) for dat in subset_data]
+        CIs = [(get_bootstrap_confint(dat, bootfunc=np.mean)) for dat in subset_data]
+
+        #define label for legend, but only for the first point of each FG (to avoid redundancies)
+        label_ = f'FC{k_cluster} ({fc_total})'
+
+        ax.scatter(index, fractions, color=colors[k_cluster], label=label_, s=90, 
+                   edgecolor=edgecolors[k_cluster], marker=marker_shapes[k_cluster], zorder=3)
+
+        #plot the asymmetric error bars
+        for n in range(n_pop):
+                        
+            #convert CIs to asymmetric errorbars around the mean. choose 0 if the errorbar is < 0.
+            #CIs[0] is lower 68%, CIs[1] is upper 68%
+            unc_low, unc_up = (max(0.0, fractions[n] - CIs[n][0]), max(0.0, CIs[n][1] - fractions[n]))
+            
+            err = ax.plot([index[n], index[n]], [fractions[n]-unc_low, fractions[n]+unc_up], 
+                          color=colors[k_cluster], alpha=0.5, lw=2.5, zorder=2)
+    
+    ax.set_xticks(index, pop_dict.values(), rotation=10, fontsize=20)
+    ax.tick_params(axis='both', which='major', labelsize=15)
+    
+    ax.set_ylabel('FC Subset / FC Total',fontsize=18)
+    
+    ax.set_title('4$\sigma$ Limit',fontsize=18)
+    
+    ax.legend(fontsize=14)
+    plt.show()
+
 
 #############################################
 #############################################
@@ -928,10 +879,12 @@ def feature_rainclouds(feature_data, feature_list=None):
 #############################################
 #############################################
 
-def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', rectangle=True):
+def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', rectangle=False, MS_1SIGMA=None):
     '''
     AIM: plot Feature Clusters on [delta_logSFR] vs. [logMstar] axes.
     * Alternatively plots [logSFR] vs. [logMstar] with completeness limits shown.
+    
+    * If rectangle=True and y='delta_logsfr', uses MS_1SIGMA to draw population rectangles on the dsfr vs. mstar figure.
     '''
     #need delta_logsfr, logmstar, and Feature Cluster columns. otherwise, quit.
     if y not in feature_data.columns or 'logmstar' not in feature_data.columns:
@@ -963,11 +916,11 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     if y=='delta_logsfr':
         y_label = r'$\Delta$log(SFR)'
         
-        if 'rectangle':
+        if rectangle and type(MS_1SIGMA) is float:
             #    add population rectangles!
-            # main sequence   -0.5 < dsfr
-            # transitioning   -2.0 < dsfr < -0.5
-            # suppressed      dsfr < -2.0
+            # main sequence   -1.5sig < dsfr < 1.5sig
+            # suppressed   -1.5sig < dsfr < 4sig
+            # passive      dsfr < 4sig
 
             from matplotlib.patches import Rectangle
 
@@ -976,17 +929,20 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
             ymin, ymax = g.ax_joint.get_ylim()   #get y-axis limits for rectangle
 
             #(lower left coordinate), width of rectangle, height of rectangle
-            rect_ms = Rectangle((xmin, -0.5), width, ymax - (-0.5),        #height from -0.5 to ymax
+            rect_ms = Rectangle((xmin, -1.5*MS_1SIGMA), width, ymax - (-1.5*MS_1SIGMA),        #height from -1.5sig to ymax
                                 facecolor='lightblue', alpha=0.2, edgecolor='blue', zorder=0)
-            rect_trans = Rectangle((xmin,-2.0), width, (-0.5) - (-2.0),    #height = 1.5 (from -2.0 to -0.5)
+            rect_trans = Rectangle((xmin,-4*MS_1SIGMA), width, (-1.5*MS_1SIGMA) - (-4*MS_1SIGMA),    #height from -4sig to -1.5sig
                                    facecolor='gray', alpha=0.2, edgecolor='black', zorder=0)
-            rect_sup = Rectangle((xmin,ymin), width, -2.0-ymin,            #height from ymin to -2.0
+            rect_sup = Rectangle((xmin,ymin), width, (-4*MS_1SIGMA)-ymin,            #height from ymin to -4*MS_1SIGMA
                                    facecolor='orangered', alpha=0.2, edgecolor='crimson', zorder=0)
 
             g.ax_joint.add_patch(rect_ms)
             g.ax_joint.add_patch(rect_trans)
             g.ax_joint.add_patch(rect_sup)
-
+        
+        else:
+            print('Note: either the rectangle arg is set to False and/or MS_1SIGMA arg is not set to a float.')
+        
     else:
         y_label='log(SFR)'
         
@@ -1022,7 +978,6 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
         legend_limits = g.ax_joint.legend(handles=handles,
                                           labels=labels,
                                           loc='lower right')
-                                          #title='Completeness Limits')
 
     g.ax_joint.set_xlabel('log(Mstar)',fontsize=14)
     g.ax_joint.set_ylabel(y_label,fontsize=14)
@@ -1046,11 +1001,11 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     plt.show()
 
 
-#######################################
-#######################################
-# Plotting Feature Clusters dSFR KDEs #
-#######################################
-#######################################
+######################################
+######################################
+# Plotting Feature Cluster dSFR KDEs #
+######################################
+######################################
 
 def plot_dSFR_KDEs(feature_data):
     '''
@@ -1239,7 +1194,8 @@ def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=Fal
 #######################################################################
 #######################################################################
 
-#HELPER FUNCTION FOR PLOTTING THE (EMPIRICAL) CUMULATIVE DISTRIBUTION FUNCTION
+# HELPER FUNCTION FOR PLOTTING THE (EMPIRICAL) CUMULATIVE DISTRIBUTION FUNCTION 
+# (in other words, "HOW TO PLOT CUMULATIVE HISTOGRAMS WITHOUT THE MATPLOTLIB VERTICAL LINE")
 def plot_ecdf(data, **kwargs):
     x = np.sort(data)   #sort the x data from least to greatest
     y = np.arange(1, len(x)+1) / len(x)  #every y value from 0 to 1
@@ -1285,7 +1241,8 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
                                                      label=env_name.replace('\n',' ').replace('   ',' '),
                                                      color='gold')
         else:
-            plot_ecdf(fc_galaxies[prefix][env_flag], linewidth=2,
+            if i==6:
+                plot_ecdf(fc_galaxies[prefix][env_flag], linewidth=2,
                                                      label=env_name.replace('\n',' ').replace('   ',' '),
                                                      color=color)
             
@@ -1295,6 +1252,8 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
     
     title_dict = {0: 'Small disks', 1: 'Spheroids', 2: 'Large disks'}
     plt.title(f'FC{fc} ({title_dict[fc]})', fontsize=15)
+    
+    plt.xlim(-5.5,1.5)
     
     plt.show()
     

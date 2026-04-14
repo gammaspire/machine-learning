@@ -1,9 +1,9 @@
 '''
-AIM: For a given Feature Group in either the main sequence population, transition population, or suppressed population of the dlogSFR vs. logMstar plot -- 
+AIM: For a given Feature Group in either the main sequence population, suppressed population, or passive population of the dlogSFR vs. logMstar plot -- 
     * pull .jpg postage stamps of galaxies from Legacy Survey
     * compile into some sort of grid of plots
     * save as a scrollable PDF, with multiple galaxies per PDF page
-    * mayhap add .pdf to hostable website?
+    * mayhap add .pdf to hostable website? (spoiler alert: I do.)
 '''
 
 import os
@@ -23,8 +23,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 
 #create global population type dictionary for separating the 
-#main sequence, transition, and suppressed populations of galaxies.
-POP_DICT = {1 : 'ms_pop', 2 : 'transition_pop', 3 : 'suppressed_pop'}
+#main sequence, suppressed, and passive populations of galaxies.
+POP_DICT = {1 : 'ms_pop', 2 : 'suppressed_pop', 3 : 'passive_pop'}
 
 #create "session" so that I do not have to make repeated requests to pull from a website. this way, the channel only opens once.
 SESSION = requests.Session()    
@@ -299,8 +299,8 @@ def create_subset(df, k=0, pop=0):
     k   : int [0, 1, 2]
     pop : int [1, 2, 3]
         * 1 = main sequence population
-        * 2 = transition population
-        * 3 = suppressed population
+        * 2 = suppressed population
+        * 3 = passive population
     '''
     
     if type(k) is not int and type(pop) is not int:

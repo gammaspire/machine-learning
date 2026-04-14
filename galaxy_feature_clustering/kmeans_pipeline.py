@@ -79,6 +79,15 @@ def run_kmeans(colors=False, save_table=True):
         #generate the dataframe
         df_full = make_galfit_table(params)  
         
+        #add the 1-sigma variance about the main sequence line -- needed for dlog(SFR) populations!
+        #must also be calculated for the full Virgo dataset (with the log(sSFR)>-11.5 flag included in the function)
+        
+        message = f'HEY-HO! Main Sequence 1-sigma variance for the full Virgo population with [log(sSFR)>-11.5] is {get_dsfr_stdev(df_full):.3f}'
+        
+        print('#'*len(message))
+        print(message)
+        print('#'*len(message))
+        
         #trim the table. remove the errors and unphysical data.
         df_trimmed = trim_galfit_table(df_full, params)
 
@@ -111,8 +120,8 @@ def run_kmeans(colors=False, save_table=True):
     #perform k-means clustering on the full set of features, using the K defined above.
     feature_data = run1_kmeans(df_scaled, features, k=K)
       
-    #for plotting aesthetic purposes primarily, re-assign Feature Group k-values such that, if k=3, the suppressed
-    #population is FG1, the large CRE_g is FG2, and the small CRE_g is FG0.
+    #for plotting aesthetic purposes primarily, re-assign Feature Group k-values such that, if k=3, the spheroid
+    #population is FG1, the large disk population is FG2, and the small disk population is FG0.
     #if k!=3, this function will do nothing.
     #kind of sort of exclusive to my VFS dataset. 
     feature_data = k_reassignment(feature_data)
@@ -168,8 +177,9 @@ def run_kmeans(colors=False, save_table=True):
         #this plot is a histogram companion to envcomp=True
         #plot_env_stacked_hist(feature_data, main_only=False)
         
-    #also self-explanatory. collected. uninhibited.
+    #also self-explanatory. collected. uninhibited. demure.
     if params.PLOT_SFRMSTAR:
+        
         from plotting_utils import plot_sfrmstar
         plot_sfrmstar(feature_data)
     

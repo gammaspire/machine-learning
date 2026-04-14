@@ -83,8 +83,8 @@ def get_stellar_columns():
 ###################################################
 # CREATE BOOL COLUMNS TO ISOLATE dSFR POPULATIONS #
 #   * Main Sequence
-#   * Transition
 #   * Suppressed
+#   * Passive
 ###################################################
 
 def get_dsfr_stdev(df):
@@ -113,17 +113,24 @@ def get_dsfr_stdev(df):
     return np.std(dsfr, ddof=1)
     
     
-def dsfr_columns(df, n_pop):
+def dsfr_columns(df, n_pop, ms_multiple=1.5, passive_multiple=3.):
     '''
     Aim: Create bool columns to isolate the dSFR populations.
     * df --> dataframe of galaxies with dSFR column
     * pop_list --> number of populations (integer; 2 or 3)
         * 3 --> main sequence (1), suppressed (2), passive (3), respectively
         * 2 --> main sequence (1), passive (2), respectively
-    Result: row-matched boolean flags for each population type!
+    
+    * ms_multiple --> value by which to multiply the 1-sigma standard deviation to define the bounds between MS_POP and SUPPRESSED_POP. motivated by Finn+2023.
+    * passive_multiple --> value by which to multiply the 1-sigma standard deviation to define the bounds between MS_SUPPRESSED and MS_PASSIVE. motivated by vibes.
+    
+    * Note: 1-sigma refers to the 1-sigma scatter about the MS line for ALL Virgo galaxies with log(sSFR)>-11.5 (Salim+2018 bound)
+    
+    Output: row-matched boolean flags for each population type!
     '''
     
-    one_sigma = get_dsfr_stdev()
+    #calculate the 1-sigma variation about the MS line
+    one_sigma = get_dsfr_stdev(df)
     
     if 'delta_logsfr' not in df.columns:
         print('Cannot add dSFR bool columns! Need "delta_logsfr" column to continue.')
@@ -141,11 +148,11 @@ def dsfr_columns(df, n_pop):
     #if three populations given, then separate into main sequence, suppressed, passive
     elif n_pop==3:
         
-        pop1_flag = (df['delta_logsfr']<=one_sigma*1.5) & (df['delta_logsfr']>-one_sigma*1.5)
+        pop1_flag = (df['delta_logsfr']<=one_sigma*ms_multiple) & (df['delta_logsfr']>-one_sigma*ms_multiple)
         
-        pop2_flag = (df['delta_logsfr']<=-one_sigma*1.5) & (df['delta_logsfr']>=-one_sigma*3.)
+        pop2_flag = (df['delta_logsfr']<=-one_sigma*ms_multiple) & (df['delta_logsfr']>=-one_sigma*passive_multiple)
         
-        pop3_flag = (df['delta_logsfr']<-one_sigma*3.)
+        pop3_flag = (df['delta_logsfr']<-one_sigma*passive_multiple)
         
         #add suppressed flag
         df['suppressed_pop'] = pop2_flag
@@ -346,8 +353,7 @@ def trim_galfit_table(full_df, params):
         print(f'ALERT! Removed {np.sum(~exclude_outliers_flag)} galaxies after excluding outlier VFIDs (from init_parameters.py).')
         print(f'Combined (accounting for duplicates), this totals to {np.sum(~exclude_flag)} galaxies (from init_parameters.py).')
         
-    message=f'Removed {ngal_before - len(df_five)}/{ngal_before}  galaxies in total. This leaves {len(df_five)} galaxies. Wow.'        
-    
+    message=f'Removed {ngal_before - len(df_five)}/{ngal_before}  galaxies in total. This leaves {len(df_five)} galaxies. Wow.'            
     print('#'*len(message))
     print(message)
     print('#'*len(message))
@@ -496,11 +502,11 @@ def create_median_table(feature_data, features):
                         
             #if features are the magnitude colors, be sure to exclude invalid values
             if feature in ['NUV_r', 'W1_W3'] and cluster_id!=-1:
-                print(f'Calculating medians for colors -- removing invalid entries for NUV-r and W1-W3...')
+                #print(f'Calculating medians for colors -- removing invalid entries for NUV-r and W1-W3...')
                 df_cluster = trim_colors(df_cluster_all.copy(), print_=False)
             
             if feature == 'Size Ratio' and cluster_id!=-1:
-                print(f'Calculating medians for Size Ratios -- removing SNR(W3) > 10 galaxies...')
+                #print(f'Calculating medians for Size Ratios -- removing SNR(W3) > 10 galaxies...')
                 df_cluster = trim_ratios(df_cluster_all.copy(), print_=False)
             
             #isolate the feature from the cluster_id data
