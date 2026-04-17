@@ -795,7 +795,7 @@ def plot_ttype_pop(feature_data, n_pop):
         feature_rainclouds(df[flag], feature_list=['t_type'])
 
 
-def plot_pop_frac(feature_data, n_pop=4):
+def plot_pop_frac(feature_data, n_pop=3):
     '''
     Aim: Create scatterplot of the fractional composition of each FC per dSFR population: main sequence, suppressed, and passive.
         * roughly mimics the setup of env_fraction
@@ -849,7 +849,7 @@ def plot_pop_frac(feature_data, n_pop=4):
         #define label for legend, but only for the first point of each FG (to avoid redundancies)
         label_ = f'FC{k_cluster} ({fc_total})'
 
-        ax.scatter(index, fractions, color=colors[k_cluster], label=label_, s=90, 
+        ax.scatter(index, fractions, color=colors[k_cluster], label=label_, s=150, 
                    edgecolor=edgecolors[k_cluster], marker=marker_shapes[k_cluster], zorder=3)
 
         #plot the asymmetric error bars
@@ -867,7 +867,7 @@ def plot_pop_frac(feature_data, n_pop=4):
     
     ax.set_ylabel('FC Subset / FC Total',fontsize=18)
     
-    ax.set_title('4$\sigma$ Limit',fontsize=18)
+    #ax.set_title('4$\sigma$ Limit',fontsize=18)
     
     ax.legend(fontsize=14)
     plt.show()
@@ -934,7 +934,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
             rect_trans = Rectangle((xmin,-4*MS_1SIGMA), width, (-1.5*MS_1SIGMA) - (-4*MS_1SIGMA),    #height from -4sig to -1.5sig
                                    facecolor='gray', alpha=0.2, edgecolor='black', zorder=0)
             rect_sup = Rectangle((xmin,ymin), width, (-4*MS_1SIGMA)-ymin,            #height from ymin to -4*MS_1SIGMA
-                                   facecolor='orangered', alpha=0.2, edgecolor='crimson', zorder=0)
+                                   facecolor='orangered', alpha=0.1, edgecolor='crimson', zorder=0)
 
             g.ax_joint.add_patch(rect_ms)
             g.ax_joint.add_patch(rect_trans)
