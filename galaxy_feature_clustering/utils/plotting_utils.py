@@ -475,7 +475,7 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
         if 'CN' in med_label:
             ylims = nser_ylim
             if nser_ylim is None:
-                ylims = (0.0,4)
+                ylims = (0.0,5)
         elif 'CRE' in med_label:
             ylims = re_ylim
             if re_ylim is None:
@@ -1237,14 +1237,11 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
         color = cmap(i / (len(env_dict) - 1)) if len(env_dict) > 1 else cmap(0.5)
         
         if i==0:
-            plot_ecdf(fc_galaxies[prefix][env_flag], linewidth=2,
-                                                     label=env_name.replace('\n',' ').replace('   ',' '),
-                                                     color='gold')
-        else:
-            if i==6:
-                plot_ecdf(fc_galaxies[prefix][env_flag], linewidth=2,
-                                                     label=env_name.replace('\n',' ').replace('   ',' '),
-                                                     color=color)
+            color='gold'
+        
+        plot_ecdf(fc_galaxies[prefix][env_flag], linewidth=2,
+                  label=env_name.replace('\n',' ').replace('   ',' '),
+                  color=color)
             
     plt.xlabel(LABEL_DICT[prefix],fontsize=14)
     plt.ylabel('Fraction of Galaxies',fontsize=14)
