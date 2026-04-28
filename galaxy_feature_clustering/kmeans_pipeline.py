@@ -90,7 +90,7 @@ def run_kmeans(colors=False, save_table=True):
         
         #trim the table. remove the errors and unphysical data.
         df_trimmed = trim_galfit_table(df_full, params)
-
+        
         #convert effective radii (px) to effective radii (kpc)
         df_trimmed = get_kpc_columns(df_trimmed, params)
                 

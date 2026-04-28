@@ -51,6 +51,10 @@ def get_ttype_column():
     hyp = Table.read('data/virgowise_data.fits')
     return hyp['t_type']
 
+def get_AGN_columns():
+    tab = Table.read('data/virgowise_data.fits')
+    return tab['WISE_AGN_flag'], tab['kauffman_AGN_flag']
+
 
 def get_env_columns():
     '''
@@ -219,6 +223,9 @@ def make_galfit_table(params):
     
     #add Hubble t-type column
     data_table['t_type'] = get_ttype_column()
+        
+    #add AGN columns
+    data_table['WISE_AGN'], data_table['kauffman_AGN'] = get_AGN_columns()
     
     #add SNR columns!
     data_table['SNR_W1'] = calculate_SNR(phot['FLUX_AP06_W1'], phot['FLUX_IVAR_AP06_W1'])
