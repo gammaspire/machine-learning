@@ -146,12 +146,6 @@ def run_kmeans(colors=False, save_table=True):
         
         #plot medians.
         plot_group_features(cluster_summary, layout_dict=params.LAYOUT_DICT)
-
-    #if user indicated a preference for a corner plot in galfit_parameters.py, oblige them
-    #must precede PCA if any, so that these features are not included in the analysis
-    if params.PLOT_CORNER:
-        from plotting_utils import plot_corner
-        plot_corner(feature_data, features=None)
     
     #if the user should like a 2D plot of the clusters...
     if params.PLOT_CLUSTERS:

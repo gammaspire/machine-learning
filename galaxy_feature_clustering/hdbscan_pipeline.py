@@ -152,11 +152,12 @@ def run_hdbscan(colors=False,save_table=True):
     #otherwise will default to the X and Y columns defined in galfit_parameters.py
     if params.UMAP_FOR_PLOTTING:
 
-        #create the Comp1, Comp2 columns. IGNORES 'Feature Cluster' column!
+        #create the Comp1, Comp2 columns. IGNORES 'Feature Cluster' column (i.e., noise not a problem)
         feature_data_umap = umap_2d(feature_data, features)
 
     #plort.
-    plot_clusters(feature_data_umap[feature_data_umap['Feature Cluster']!=-1], x=params.X, y=params.Y, 
+    plot_clusters(feature_data_umap,
+                  x=params.X, y=params.Y, 
                   PCA=params.PCA_FOR_PLOTTING, UMAP=params.UMAP_FOR_PLOTTING)
 
     #self-explanatory. uninvolved. demure.

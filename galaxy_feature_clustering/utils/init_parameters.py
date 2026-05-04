@@ -63,6 +63,7 @@ BANDS are simply all bands that I want in the dataframe.
 BANDS=['g','r','W1-fixBA','W3-fixBA']  #ALL (GALFIT) bands
 BANDS_TO_CLUSTER=['g','W1-fixBA']      #(GALFIT) bands that are considered for the clustering algorithm
 
+#GALFIT columns!
 COLUMNS=['CRE','CN','CXC','CNumerical_Error','CRE_ERR', 'CN_ERR'] #NOTE THESE FEATURE LABELS ARE LATER CHANGED
                                                         #CRE --> Effective Radius
                                                         #CN --> Sersic Index

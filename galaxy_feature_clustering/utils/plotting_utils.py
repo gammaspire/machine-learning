@@ -15,6 +15,9 @@ from itertools import combinations
 #editing feature labels! global variable!
 LABEL_DICT = make_label_dictionary()
 
+import os
+HOMEDIR=os.getenv("HOME")
+
 #lastly, lastly...globally set the fontsize of tickmark labels
 plt.rc('xtick', labelsize=14)
 plt.rc('ytick', labelsize=14)
@@ -77,6 +80,9 @@ def plot_silhouette(K, silhouettes):
     plt.ylabel('Silhouette Score',fontsize=14)
     
     plt.tight_layout()
+    
+    plt.savefig(HOMEDIR+'/Desktop/kmeans_figures/silhouette.png',dpi=150)
+    
     plt.show()
     
 
@@ -86,22 +92,27 @@ def plot_silhouette(K, silhouettes):
 ############################################################
 ############################################################
 
-def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
+def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False, colorbar=None):
+    '''
+    If colorbar=None, points will be colored according to their FC affiliation. Otherwise, enter the columnname
+    from feature_data (as a string).
+    '''
+    
     
     #pull the colors...
     cluster_colors, _, cluster_shapes = marker_palette(feature_data)
     
     #sort the unique Feature Clusters numerically
     unique_clusters = sorted(feature_data['Feature Cluster'].unique())
-    
+
     # -- 
     #NOTE: these maps make easier the use of sns scatterplots...
     # --
     
     #create custom label map! example -- {0: 'FC0 (Ngal)'}
     label_map= {c: f"FC{c} ({len(feature_data[feature_data['Feature Cluster']==c])})" for c in unique_clusters if c!=-1}
-    color_map = {label_map[c]: cluster_colors[i] for i, c in enumerate(unique_clusters)}
-    marker_map = {label_map[c]: cluster_shapes[i] for i, c in enumerate(unique_clusters)}
+    color_map = {label_map[c]: cluster_colors[i] for i, c in enumerate(unique_clusters) if c!=-1}
+    marker_map = {label_map[c]: cluster_shapes[i] for i, c in enumerate(unique_clusters) if c!=-1}
     
     #PCA and UMAP flag
     flag = (PCA | UMAP)
@@ -113,36 +124,46 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False):
     x = 'Comp1' if flag else x
     y = 'Comp2' if flag else y
     
-    
-    print(label_map)
+    if colorbar is not None:
+        hue = feature_data[colorbar]
+        color_map = 'viridis'
+        marker_map = 'o'
+        style=None
+    else:
+        hue = feature_data['Feature Cluster'].map(label_map)
+        style = feature_data['Feature Cluster'].map(label_map)
     
     if -1 not in feature_data['Feature Cluster'].unique():
         plt.figure(figsize=(8,6))
         
         ax = sns.scatterplot(data=feature_data, x=x, y=y, 
-                             hue=feature_data['Feature Cluster'].map(label_map),palette=color_map, 
-                             style=feature_data['Feature Cluster'].map(label_map),markers=marker_map,
-                             s=100,alpha=0.5, edgecolor='w', linewidth=0.4)
+                             hue=hue, palette=color_map, style=style, markers=marker_map,
+                             s=100, alpha=0.5, edgecolor='w', linewidth=0.4)
     else:
         ax = sns.scatterplot(x=x, y=y, data=feature_data[feature_data['Feature Cluster'] == -1], alpha=0.1,
-                            color='lightgray', edgecolor='w', linewidth=0.4, label='Noise')
+                            color='lightgray', edgecolor='w', linewidth=0.4, 
+                            label=f'Noise ({sum(feature_data["Feature Cluster"] == -1)})')
         
-        sns.scatterplot(x=x, y=y, data=feature_data[feature_data['Feature Cluster'] != -1], 
-                        hue=feature_data['Feature Cluster'].map(label_map), palette=color_map, 
-                        style=feature_data['Feature Cluster'].map(label_map), markers=marker_map,
-                        alpha=0.7, edgecolor='w', linewidth=0.4,
-                        ax=ax)
+        ax2 = sns.scatterplot(x=x, y=y, data=feature_data[feature_data['Feature Cluster'] != -1], 
+                        hue=hue, palette=color_map, style=style, markers=marker_map,
+                        alpha=0.7, edgecolor='w', linewidth=0.4, ax=ax)
     
     plt.xlabel('Component One',fontsize=14)
     plt.ylabel('Component Two',fontsize=14)
     
     ax.grid(alpha=0.2)
 
-    ax.legend(fontsize='large', title_fontsize='large', title=None)
-    
-    #plt.title(f'Structural Clusters in 2D Space')
-    plt.tight_layout()
-    plt.show()
+    if colorbar is None:
+        ax.legend(fontsize='large', title_fontsize='large', title=None)
+    else:
+        plt.legend([], [], frameon=False)   #IF using a colorbar, no legend needed.
+        plt.title(colorbar,fontsize=14)
+
+        plt.tight_layout()
+        
+        plt.savefig(HOMEDIR+'/Desktop/kmeans_figures/pca_clusters.png',dpi=150)
+        
+        plt.show()
 
     
 ##################################
@@ -200,6 +221,9 @@ def plot_pca_components(feature_data, features, pca, cmap_name='tab20'):
     plt.legend(loc='upper left', fontsize=12, markerscale=2, labelspacing=1.2, framealpha=0.3) #bbox_to_anchor=(1.05, 1), 
     
     plt.tight_layout()
+    
+    plt.savefig(HOMEDIR+'/Desktop/kmeans_figures/pca_vectors.png',dpi=150)
+    
     plt.show()
 
 
@@ -369,11 +393,12 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
     
     ax.set_ylim(ylim1, ylim2)
     ax.set_ylabel('Fraction of Galaxies',fontsize=17)
-
-    #ax.set_title(title_)
     
     ax.legend(loc=legend_loc, fontsize=14)
     
+    plt.tight_layout()
+    figpath = HOMEDIR+'/Desktop/kmeans_figures/clusterfraction.png' if envfrac else HOMEDIR+'/Desktop/kmeans_figures/envfraction.png'
+    plt.savefig(figpath,dpi=150)
     plt.show()
 
     
@@ -505,7 +530,9 @@ def plot_group_features(median_data, layout_dict=None, nser_ylim=None, re_ylim=N
         for j in range(ncol):
             if (i, j) not in used_axes:
                 fig.delaxes(axes[i, j])
-
+    
+    plt.tight_layout()
+    plt.savefig(HOMEDIR+'/Desktop/kmeans_figures/cluster_medians.png',dpi=150)
     plt.show()
     return
 
@@ -604,6 +631,9 @@ def virgowise_median_plot(feature_data, plot_paper1=False):
             ins.set_ylim(0.67,1.09)
             
         ax.legend(loc='upper left',fontsize=14)
+        
+        plt.tight_layout()
+        plt.savefig(HOMEDIR+f'/Desktop/kmeans_figures/sizeratio_fc{k}.png',dpi=150)
         plt.show()        
         
 
@@ -664,6 +694,9 @@ def feature_rainclouds(feature_data, feature_list=None):
             mod_df = trim_colors(mod_df, print_=False)   #remove illegitimate magnitude entries
         elif feature_name == 'Size Ratio':
             mod_df = trim_ratios(mod_df, print_=False)   #remove ratios calculated with W3 SNR < 10. AND those with np.nan. etc.
+        elif feature_name == 't_type':
+            #drop any NaN values, indicating that the galaxy has no t-type available
+            mod_df = mod_df.copy().dropna(subset=['t_type'])        
         
         #create bool flags for each k feature cluster
         kflags = {k: (mod_df['Feature Cluster'].values==k) for k in k_clusters}
@@ -727,6 +760,8 @@ def feature_rainclouds(feature_data, feature_list=None):
         if 'CRE' in feature_name:
             ax.set_xlim(-0.25,15.25)
         
+        plt.tight_layout()
+        plt.savefig(HOMEDIR+f'/Desktop/kmeans_figures/raincloud_{feature_name}.png',dpi=150)
         plt.show()
 
         
@@ -870,6 +905,9 @@ def plot_pop_frac(feature_data, n_pop=3):
     #ax.set_title('4$\sigma$ Limit',fontsize=18)
     
     ax.legend(fontsize=14)
+    
+    plt.tight_layout()
+    plt.savefig(HOMEDIR+'/Desktop/kmeans_figures/fc_pop_fractions.png',dpi=150)
     plt.show()
 
 
@@ -886,7 +924,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     
     * If rectangle=True and y='delta_logsfr', uses MS_1SIGMA to draw population rectangles on the dsfr vs. mstar figure.
     '''
-    #need delta_logsfr, logmstar, and Feature Cluster columns. otherwise, quit.
+    #need delta_logsfr | logsfr, logmstar, and Feature Cluster columns. otherwise, quit.
     if y not in feature_data.columns or 'logmstar' not in feature_data.columns:
         print(f'Need "logmstar" and {y} columns to use this function!')
         return
@@ -977,10 +1015,13 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
         # --- create 2nd legend for the limit lines ---
         legend_limits = g.ax_joint.legend(handles=handles,
                                           labels=labels,
-                                          loc='lower right')
+                                          loc='upper left')
 
     g.ax_joint.set_xlabel('log(Mstar)',fontsize=14)
     g.ax_joint.set_ylabel(y_label,fontsize=14)
+    
+    g.ax_joint.set_xlim(8,)
+    g.ax_joint.set_ylim(-7.6,1.3) if y=='logsfr' else g.ax_joint.set_ylim(-5.8,2)
     
     # ---- KDE MARGINALS (the histogram distributions) ----
     for k, color in enumerate(palette):
@@ -998,6 +1039,10 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     
     g.fig.set_size_inches(12, 6)
     
+    g.fig.tight_layout()
+    figpath=HOMEDIR+f'/Desktop/kmeans_figures/sfr_mstar.png' if y=='logsfr' else HOMEDIR+f'/Desktop/kmeans_figures/dsfr_mstar.png'
+    
+    g.fig.savefig(figpath,dpi=150)
     plt.show()
 
 
@@ -1043,6 +1088,9 @@ def plot_dSFR_KDEs(feature_data):
     plt.ylabel('Density',fontsize=14)
 
     fig.legend()
+
+    plt.tight_layout()
+    plt.savefig(HOMEDIR+'/Desktop/kmeans_figures/kde_dsfr.png',dpi=150)
     plt.show()   
     
     #create unique pairs for K-S TEST...
@@ -1184,7 +1232,9 @@ def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=Fal
                 print(f'ks stat (FG{k1} & FG{k2}): {ks_stat}')
                 print(f'p-value (FG{k1} & FG{k2}): {p_value}')
                 print('--------------------')
-
+    
+    plt.tight_layout()
+    plt.savefig(HOMEDIR+f'/Desktop/kmeans_figures/kde_env_{prefix}.png',dpi=150)
     plt.show()
 
     
@@ -1209,10 +1259,13 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
     
     if dsfr:
         prefix='delta_logsfr'
+        xlims=(-5.5,1.5)
     elif w1ser:
-        prefix='CN_W1'
+        prefix='CN_W1-fixBA_unscaled'
+        xlims=(0,6)
     elif gser:
-        prefix='CN_g'
+        prefix='CN_g_unscaled'
+        xlims=(0,6)
     else:
         print('Need to set dsfr, w1ser, or gser to True.')
         return
@@ -1243,14 +1296,17 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
                   label=env_name.replace('\n',' ').replace('   ',' '),
                   color=color)
             
-    plt.xlabel(LABEL_DICT[prefix],fontsize=14)
+    plt.xlabel(LABEL_DICT[prefix.replace('_unscaled','')],fontsize=14)
     plt.ylabel('Fraction of Galaxies',fontsize=14)
     plt.legend()
     
     title_dict = {0: 'Small disks', 1: 'Spheroids', 2: 'Large disks'}
     plt.title(f'FC{fc} ({title_dict[fc]})', fontsize=15)
     
-    plt.xlim(-5.5,1.5)
+    plt.xlim(*xlims)
+    
+    plt.tight_layout()
+    plt.savefig(HOMEDIR+f'/Desktop/kmeans_figures/cum_{prefix}_fc{fc}.png',dpi=150)
     
     plt.show()
     

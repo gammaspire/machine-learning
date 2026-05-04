@@ -174,6 +174,9 @@ def get_delta_logsfr(mstar_array, sfr_array, m, b):
     #first calculate the predicted logSFR at the given logMstar value
     logSFR_MS = m * mstar_array + b
     
+    #collapse log(SFR)<-3 to -3
+    sfr_array[sfr_array<-3] = -3
+    
     #/\log(SFR) = logSFR_data - logSFR_MS
     delta_sfr = sfr_array - logSFR_MS
     

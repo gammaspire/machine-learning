@@ -75,11 +75,14 @@ def get_stellar_columns():
     cigale = Table.read('data/cigale_vf_metallicity.fits')
     mstar = np.log10(cigale['bayes.stellar.m_star'])
     sfr = np.log10(cigale['bayes.sfh.sfr'])
-
+    
     #before ANY trimming is applied to the data,
     #determine the main sequence line fit to log(ssfr)>-11.5 galaxies
     m, b = get_ms_line(mstar,sfr)
     delta_sfr = get_delta_logsfr(mstar, sfr, m, b)
+    
+    #collapse log(SFR)<-3 to -3
+    sfr[sfr<-3] = -3
     
     return mstar, sfr, delta_sfr
 

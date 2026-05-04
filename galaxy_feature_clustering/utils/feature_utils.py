@@ -60,7 +60,8 @@ def make_label_dictionary():
                     'W1_W3': '[W1-W3]',
                     'Size Ratio': r'Size Ratio [$Re_{W3}$ / $Re_{W1}$]',
                     'delta_logsfr': '$\Delta$logSFR',
-                    'logmstar': 'logM$_*$/M$_\odot$'}
+                    'logmstar': 'logM$_*$/M$_\odot$',
+                    't_type': 'Morphological T-Type'}
     
     return feature_dict
 
