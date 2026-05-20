@@ -159,11 +159,11 @@ def plot_clusters(feature_data, x=None, y=None, PCA=False, UMAP=False, colorbar=
         plt.legend([], [], frameon=False)   #IF using a colorbar, no legend needed.
         plt.title(colorbar,fontsize=14)
 
-        plt.tight_layout()
-        
-        plt.savefig(HOMEDIR+'/Desktop/kmeans_figures/pca_clusters.png',dpi=150)
-        
-        plt.show()
+    plt.tight_layout()
+
+    plt.savefig(HOMEDIR+'/Desktop/kmeans_figures/pca_clusters.png',dpi=150)
+
+    plt.show()
 
     
 ##################################
@@ -816,7 +816,7 @@ def plot_ttype_pop(feature_data, n_pop):
     df = dsfr_columns(feature_data, n_pop)
 
     for pop in ['ms_pop','suppressed_pop','passive_pop']:
-        if (pop=='ms_pop') and (n_pop==2):
+        if (pop=='suppressed_pop') and (n_pop==2):
             continue #go to next iteration; if n_pop=2, then there is no transition population
         flag=df[pop]
         
@@ -852,18 +852,31 @@ def plot_pop_frac(feature_data, n_pop=3):
     #define Feature Cluster colors
     colors, edgecolors, marker_shapes = marker_palette(feature_data)
         
-    #define x-axis indices...
-    index = np.arange(1,n_pop+1,1)
+    pop_names = ['ms_pop', 'suppressed_pop', 'passive_pop']
+    pop_labels = ['Main\n Sequence', 'Suppressed', 'Passive']
     
-    #dSFR population flags
-    pop_dict = {'ms_pop':'Main\n Sequence','suppressed_pop':'Suppressed','passive_pop':'Passive'}
-    dsfr_flags = [feature_data[name] for name in pop_dict.keys()]
-    
+    if n_pop == 2:
+        pop_names = ['ms_pop', 'passive_pop']
+        pop_labels = ['Main\n Sequence', 'Passive']
+
+    index = np.arange(1, len(pop_names) + 1)
+
+    dsfr_flags = [feature_data[name] for name in pop_names]
+        
+    #OPTIONAL: include points where data exist when log(SFR)=-3 floor is removed
+    nofloor_vals = [[0.68, 0.127, 0.17],
+                    [0.245, 0.166, 0.575],
+                    [0.75, 0.1, 0.09]]
+
     #initialize the figure
     fig, ax = plt.subplots(1,1,figsize=(7,5))
     
     #now, loop through every k cluster and plottt.
     for k_cluster in unique_clusters:
+        
+        plt.scatter(index, nofloor_vals[k_cluster], s=150, 
+                   edgecolor=edgecolors[k_cluster], marker=marker_shapes[k_cluster],
+                   facecolor='None')
         
         #isolate total number of galaxies in the FC
         fc_total = len(feature_data[feature_data['Feature Cluster']==k_cluster])
@@ -874,7 +887,7 @@ def plot_pop_frac(feature_data, n_pop=3):
         #the average of this, in fact, IS the subset / total fraction!
         #do this N times, once per population type -- creates a list of length N
         subset_data = [(x[feature_data['Feature Cluster'] == k_cluster].values).astype(int) for x in dsfr_flags]
-        
+
         #calculate fraction and bootstrap uncertainty
         #the uncertainty is on the mean of the data. remember that mean = subset/total when we convert
         #the subset array to 0s and 1s.
@@ -883,12 +896,13 @@ def plot_pop_frac(feature_data, n_pop=3):
 
         #define label for legend, but only for the first point of each FG (to avoid redundancies)
         label_ = f'FC{k_cluster} ({fc_total})'
-
+                
+        ax.plot(index, fractions, color=edgecolors[k_cluster])
         ax.scatter(index, fractions, color=colors[k_cluster], label=label_, s=150, 
                    edgecolor=edgecolors[k_cluster], marker=marker_shapes[k_cluster], zorder=3)
 
         #plot the asymmetric error bars
-        for n in range(n_pop):
+        for n in range(len(pop_names)):
                         
             #convert CIs to asymmetric errorbars around the mean. choose 0 if the errorbar is < 0.
             #CIs[0] is lower 68%, CIs[1] is upper 68%
@@ -897,13 +911,11 @@ def plot_pop_frac(feature_data, n_pop=3):
             err = ax.plot([index[n], index[n]], [fractions[n]-unc_low, fractions[n]+unc_up], 
                           color=colors[k_cluster], alpha=0.5, lw=2.5, zorder=2)
     
-    ax.set_xticks(index, pop_dict.values(), rotation=10, fontsize=20)
+    ax.set_xticks(index, pop_labels, rotation=10, fontsize=20)
     ax.tick_params(axis='both', which='major', labelsize=15)
     
     ax.set_ylabel('FC Subset / FC Total',fontsize=18)
-    
-    #ax.set_title('4$\sigma$ Limit',fontsize=18)
-    
+        
     ax.legend(fontsize=14)
     
     plt.tight_layout()
@@ -935,7 +947,9 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     #get palette colors
     palette, _, markers = marker_palette(feature_data)
     
-    g = sns.JointGrid(data=feature_data, x="logmstar", y=y, height=5)
+    x_ = 'logmstar_unscaled' if 'logmstar_unscaled' in feature_data.columns else 'logmstar'
+    
+    g = sns.JointGrid(data=feature_data, x=x_, y=y, height=5)
 
     # ---- MAIN SCATTER ----
     g.plot_joint(sns.scatterplot, data=feature_data, color='lightgray', alpha=0.4, linewidth=0.3)
@@ -997,7 +1011,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
             handles.append(h_mstar)
             labels.append(f'log(Mstar) > {mstar_lim}')
         
-        xplot = np.sort(feature_data['logmstar'],axis=None)
+        xplot = np.sort(feature_data[x_],axis=None)
         
         h_ssfr, = g.ax_joint.plot([xplot[0],xplot[-1]], [-11.5+xplot[0],-11.5+xplot[-1]], color='gray', 
                                   linestyle='-.', alpha=1, linewidth=1.5)
@@ -1005,7 +1019,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
         labels.append('log(sSFR) > -11.5')
         
         #add MS line!
-        m, b = get_ms_line(feature_data['logmstar'], feature_data['logsfr'])
+        m, b = get_ms_line(feature_data[x_], feature_data['logsfr'])
         
         h_ms, = g.ax_joint.plot([xplot[0], xplot[-1]], [m*xplot[0]+b, m*xplot[-1]+b], color='k', 
                                   linestyle='--', alpha=0.8, linewidth=1.5)
@@ -1021,14 +1035,14 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     g.ax_joint.set_ylabel(y_label,fontsize=14)
     
     g.ax_joint.set_xlim(8,)
-    g.ax_joint.set_ylim(-7.6,1.3) if y=='logsfr' else g.ax_joint.set_ylim(-5.8,2)
+    g.ax_joint.set_ylim(-4.6,1.3) if y=='logsfr' else g.ax_joint.set_ylim(-3.8,2)
     
     # ---- KDE MARGINALS (the histogram distributions) ----
     for k, color in enumerate(palette):
         subset = feature_data[(feature_data["Feature Cluster"] == k)]
 
         #top marginal (logmstar)
-        sns.kdeplot(x=subset["logmstar"], ax=g.ax_marg_x, color=color, fill=True, alpha=0.3, linewidth=1.2)
+        sns.kdeplot(x=subset[x_], ax=g.ax_marg_x, color=color, fill=True, alpha=0.3, linewidth=1.2)
 
         #right marginal (dlogsfr)
         sns.kdeplot(y=subset[y], ax=g.ax_marg_y, color=color, fill=True, alpha=0.3, linewidth=1.2)
@@ -1251,7 +1265,7 @@ def plot_ecdf(data, **kwargs):
     y = np.arange(1, len(x)+1) / len(x)  #every y value from 0 to 1
     plt.step(x, y, where='post', **kwargs)   #create the step function...
 
-def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_only=False):
+def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_only=False, print_=False):
     '''
     AIM: create a single figure of the cumulative histogram curves for a given Feature Cluster in each environment.
     * fc must be an integer
@@ -1300,7 +1314,8 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
     plt.ylabel('Fraction of Galaxies',fontsize=14)
     plt.legend()
     
-    title_dict = {0: 'Small disks', 1: 'Spheroids', 2: 'Large disks'}
+    title_dict = {0: 'Dwarf Galaxies', 1: 'Spheroids', 2: 'Large disks', 3:'Placeholder', 4:'Placeholder',
+                 5:'Placeholder'}
     plt.title(f'FC{fc} ({title_dict[fc]})', fontsize=15)
     
     plt.xlim(*xlims)
@@ -1310,16 +1325,18 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
     
     plt.show()
     
-    #create unique pairs for K-S TEST...
-    k_pairs = list(combinations(env_dict.keys(), 2))
+    if print_:
     
-    #isolate the components of each kpair, then put into ks_2samp.
-    for env1, env2 in k_pairs:
+        #create unique pairs for K-S TEST...
+        k_pairs = list(combinations(env_dict.keys(), 2))
 
-        ks_stat, p_value = ks_2samp(fc_galaxies[prefix][env_dict[env1]],fc_galaxies[prefix][env_dict[env2]])
-        env1_name=env1.replace('\n',' ').replace('   ',' ')
-        env2_name=env2.replace('\n',' ').replace('   ',' ')
-        print('--------------------')
-        print(f"ks stat ({env1_name} || {env2_name}): {ks_stat:.3f}")
-        print(f"p-value ({env1_name} || {env2_name}): {p_value:.3e}")
-        print('--------------------')
+        #isolate the components of each kpair, then put into ks_2samp.
+        for env1, env2 in k_pairs:
+
+            ks_stat, p_value = ks_2samp(fc_galaxies[prefix][env_dict[env1]],fc_galaxies[prefix][env_dict[env2]])
+            env1_name=env1.replace('\n',' ').replace('   ',' ')
+            env2_name=env2.replace('\n',' ').replace('   ',' ')
+            print('--------------------')
+            print(f"ks stat ({env1_name} || {env2_name}): {ks_stat:.3f}")
+            print(f"p-value ({env1_name} || {env2_name}): {p_value:.3e}")
+            print('--------------------')

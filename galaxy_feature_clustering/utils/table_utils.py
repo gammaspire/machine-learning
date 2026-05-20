@@ -111,9 +111,14 @@ def get_dsfr_stdev(df):
         print('Cannot calculate stdev for delta_logsfr if delta_logsfr is not a column!')
         return
     
+    if 'logmstar_unscaled' not in df.columns:
+        mstar_col = 'logmstar'
+    else:
+        mstar_col = 'logmstar_unscaled'
+    
     #isolate ssfr>-11.5 galaxies
     from data_utils import ssfr_flag
-    salim_flag = ssfr_flag(df['logmstar'], df['logsfr'])
+    salim_flag = ssfr_flag(df[mstar_col], df['logsfr'])
     
     dsfr = df['delta_logsfr'][salim_flag]
     
@@ -304,9 +309,12 @@ def trim_galfit_table(full_df, params):
     ngal_before = len(full_df)
     
     #apply W3, NUV SNR limit
-    snr_limit = (full_df['SNR_W3']>=5.) | (full_df['SNR_NUV']>=5.)
-    print(f'ALERT! Removed {np.sum(~snr_limit)} galaxies after applying the W3, NUV SNR limit.')
-    df_snrtrim1 = full_df.loc[snr_limit]
+    #snr_limit = (full_df['SNR_W3']>=5.) | (full_df['SNR_NUV']>=5.)
+    #print(f'ALERT! Removed {np.sum(~snr_limit)} galaxies after applying the W3, NUV SNR limit.')
+    #df_snrtrim1 = full_df.loc[snr_limit]
+    
+    #UPDATE [May 14, 2026]: ignoring the W3, NUV SNR limit
+    df_snrtrim1 = full_df
     
     #apply W1 SNR limit
     snr_limit_w1 = (df_snrtrim1['SNR_W1']>=20.)
@@ -448,7 +456,7 @@ def k_reassignment(feature_data):
     clusters = sorted(feature_data['Feature Cluster'].unique())
     
     #only run if k=3 AND k-means clustering has already run
-    if (len(clusters)!=3) or ('Feature Cluster' not in feature_data.columns):
+    if (len(clusters) not in [3,4]) or ('Feature Cluster' not in feature_data.columns):
         return feature_data
     
     #create clean copy of feature_data dataframe:
@@ -472,9 +480,13 @@ def k_reassignment(feature_data):
     #determine the "old" k-values for what will be FG0 and FG2
     fg0_old = remainder_sorted[0]   #smaller are all FG0 galaxies
     fg2_old = remainder_sorted[1]   #larger are all FG2 galaxies
-
+    
     #create mapping dictionary!
     mapping = {fg0_old: 0, fg1_old: 1, fg2_old: 2}
+    
+    if len(clusters)==4:
+        fg3_old = remainder_sorted[2]
+        mapping = {fg0_old: 0, fg1_old: 1, fg2_old: 2, fg3_old: 3}
 
     #add the mapping dictionary to df...
     df['Feature Cluster'] = df['Feature Cluster'].map(mapping)
@@ -495,7 +507,7 @@ def create_median_table(feature_data, features):
     
     #get list of unscaled feature columns, including the size ratios
     features_unscaled = [feature+'_unscaled' for feature in features] + ['Size Ratio'] + ['NUV_r'] + ['W1_W3']
-
+        
     #initialize the rows
     summary_rows = []
     

@@ -129,7 +129,7 @@ def get_ms_line(mstar_array, sfr_array):
     salim_flag = ssfr_flag(mstar_array, sfr_array)
     
     m, b = np.polyfit(mstar_array[salim_flag], sfr_array[salim_flag], deg=1)
-    
+        
     return m, b
 
 

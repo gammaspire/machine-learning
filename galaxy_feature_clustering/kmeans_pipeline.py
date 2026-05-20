@@ -64,6 +64,7 @@ def run_kmeans(colors=False, save_table=True):
     print('NOTE: be sure to edit galfit_parameters.py so parameters are to your liking!')
     
     #pull the full list of features which will be clustered
+    #if params.INCLUDE_MSTAR, will replace CRE_W1-fixBA with logmstar
     features = get_feature_names(params=params, colors=colors)
         
     print(f'USING THESE FEATURES: {features}')

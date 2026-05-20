@@ -79,6 +79,12 @@ PSCALE={'g':0.262,'r':0.262,'z':0.262,
         'W4':2.75}  #from mucho-galfit code
 
 
+####################################
+## INCLUDE LOGMSTAR IN CLUSTERING ##
+####################################
+
+INCLUDE_MSTAR=True
+
 ################################
 ###    HDBSCAN PARAMETERS    ###
 ################################
@@ -197,7 +203,8 @@ The subplot coordinate/columnname dictionary to help organize the figure layout.
 * COMPANION TO PLOT_MEDIANS
 '''
 LAYOUT_DICT=   {(0, 0): 'CRE_g_unscaled',
-                (0, 1): 'CRE_W1-fixBA_unscaled',
+                #(0, 1): 'CRE_W1-fixBA_unscaled',
+                (0, 1): 'logmstar_unscaled',
                 (1, 0): 'CN_g_unscaled',
                 (1, 1): 'CN_W1-fixBA_unscaled'}
                 #(2, 0): 'Size Ratio',
@@ -251,6 +258,8 @@ class Params():
         self.LOGSFR_LIM = LOGSFR_LIM
         self.LOGMSTAR_LIM = LOGMSTAR_LIM
         self.AXISRATIO_LIM = AXISRATIO_LIM
+        
+        self.INCLUDE_MSTAR = INCLUDE_MSTAR
         
         self.LOADTABLE = LOADTABLE
         self.KMEANS_DF_PATH = KMEANS_DF_PATH

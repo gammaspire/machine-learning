@@ -22,6 +22,9 @@ the checkpoint hoohaw
 # for now, OSRS data directory
 /osrs_star_spawns
 
+# the galaxy clustering SCIENCE .ipynb
+/galaxy_feature_clustering/feature_clustering_science.ipynb
+
 # the galaxy clustering PDFs directory
 /galaxy_feature_clustering/pdfs
 

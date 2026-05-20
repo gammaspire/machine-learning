@@ -64,6 +64,9 @@ def run_hdbscan(colors=False,save_table=True):
     #pull the full list of features which will be clustered
     features = get_feature_names(params=params)
     
+    if params.INCLUDE_MSTAR:
+        features += ['logmstar', 'CN_W1-fixBA']
+    
     print(f'USING THESE FEATURES: {features}')
     
     params.colors=colors
@@ -130,10 +133,10 @@ def run_hdbscan(colors=False,save_table=True):
         cluster_summary.to_csv(loc, index=False)
     
     #if params.PLOT_MEDIANS:
-    from plotting_utils import plot_group_features
+    #from plotting_utils import plot_group_features
 
     #plot medians.
-    plot_group_features(cluster_summary, layout_dict=params.LAYOUT_DICT)
+    #plot_group_features(cluster_summary, layout_dict=params.LAYOUT_DICT)
 
     #if user indicated a preference for a corner plot in galfit_parameters.py, oblige them
     #must precede UMAP, so that the UMAP components are not included in the analysis

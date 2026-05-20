@@ -25,6 +25,10 @@ def get_feature_names(params, colors=False):
     if colors:
         features += ['NUV_r','W1_W3']
         
+    if params.INCLUDE_MSTAR:
+        features += ['logmstar']
+        features = [item for item in features if item != "CRE_W1-fixBA"]
+                
     #and return
     return features
 
