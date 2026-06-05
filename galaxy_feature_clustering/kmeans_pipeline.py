@@ -1,6 +1,6 @@
 '''
 OBJECTIVE: 
-* apply k-means feature clustering (unsupervised machine learning) to VFS GALFIT output parameters for optical grz, unWISE W1-4.
+* apply k-means Feature Classing (unsupervised machine learning) to VFS GALFIT output parameters for optical grz, unWISE W1-4.
 
 NEED:
 * vf_v2_galfit_{band}.fits
@@ -17,7 +17,7 @@ SCAFFOLD PROCEDURE:
 * convert all effective radii to kpc!
 * standardize all data using sklearn.StandardScaler
 * determine the optimal k value using silhouette score (optionally generate silhouette plot)
-    * quantitative metric of feature cluster quality
+    * quantitative metric of Feature Class quality
     * higher score --> more robust clustering
 * use optimal k-value to generate "cluster membership array"
     * row-matched to input data; contains integer value for every galaxy indicating 
@@ -139,7 +139,7 @@ def run_kmeans(colors=False, save_table=True):
         
     if save_table:
         loc = os.path.join(os.getcwd(), 'data/kmeans_median_features.csv')
-        print(f"\n A summary of feature cluster median properties saved to {loc}.")
+        print(f"\n A summary of Feature Class median properties saved to {loc}.")
         cluster_summary.to_csv(loc, index=False)
 
     if params.PLOT_MEDIANS:
@@ -156,7 +156,7 @@ def run_kmeans(colors=False, save_table=True):
         #otherwise will default to the X and Y columns defined in galfit_parameters.py
         if params.PCA_FOR_PLOTTING:
             
-            #create the PCA1, PCA2 columns. IGNORES 'Feature Cluster' column!
+            #create the PCA1, PCA2 columns. IGNORES 'Feature Class' column!
             #will also output a plot of the PCA vector components
             feature_data = pca_2d(feature_data, features, plot=params.PLOT_PCA_COMPONENTS)
             

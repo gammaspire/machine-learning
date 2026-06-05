@@ -166,18 +166,91 @@ def get_ms_distance(mstar_array, sfr_array, m, b):
 # GET log(SFR) OFFSET FROM MAIN SEQUENCE #
 ##########################################
 
-def get_delta_logsfr(mstar_array, sfr_array, m, b):
+def get_delta_logsfr(mstar_array, sfr_array, m=0.799, b=-8.556, logsfr_floor=None):
     '''
     AIM: calculate /\log(SFR) array for the input galaxy data. Treat log(Mstar) as fixed.
+    * Default m, b are from fits to the original data
     '''
-    
+
     #first calculate the predicted logSFR at the given logMstar value
     logSFR_MS = m * mstar_array + b
     
     #collapse log(SFR)<-3 to -3
-    sfr_array[sfr_array<-3] = -3
+    if logsfr_floor is not None:
+        sfr_array[sfr_array<logsfr_floor] = logsfr_floor
     
     #/\log(SFR) = logSFR_data - logSFR_MS
     delta_sfr = sfr_array - logSFR_MS
     
     return delta_sfr
+
+
+#######################################################
+# HELPER FUNCTION FOR plotting_utils.py/plot_pop_frac #
+#######################################################
+
+def mod_pop_fractions(df, fc=0, sup_to_pas=False, pas_to_sup=False):
+    '''
+    AIM: for a given fc, create modified suppressed_pop and passive_pop bool columns and calculate pop fractions.
+        * due to logSFR=-3 floor, many galaxies moved from passive to suppressed regime
+        * want to create uncertainties that show what happens when all passive open shape
+          galaxies in an FC are suppressed, or all suppressesed open shape galaxies are passive
+        * logSFRs for these galaxies are NOISY -- want to reflect this with uncertainties!
+    
+    ** open shape galaxies == galaxies with logSFR<-3.
+    
+    OUTPUT:
+        * If sup_to_pas, will take all open shape galaxies in suppressed regime and move to passive
+            * output is two FLOATS
+                * modified passive fraction (closed passive + open passive + open suppressed)
+                * modified suppressed fraction (closed suppressed)
+        * If pas_to_sup, will take all open shape galaxies in passive regime and move to suppressed
+            * output is two FLOATS
+                * modified passive fraction (closed passive)
+                * modified suppressed fraction (open passive + open suppressed + closed suppressed)
+    '''
+    
+    if 'suppressed_pop' not in df.columns:
+        print('suppressed_pop not a df column! exiting.')
+        return
+    
+    if sup_to_pas == pas_to_sup:
+        print('either choose sup_to_pas or pas_to_sup -- do not choose both or neither!')
+        return
+    
+    #isolate galaxies in the given FC
+    fc_galaxies = df[df['Feature Class']==int(fc)]
+    
+    #isolate logSFR. if logSFR=-3 floor already set, then cannot create modified bool columns (i.e., no open shapes!)
+    sfr = fc_galaxies['logsfr']
+    if np.sum(sfr < -3) == 0:
+        print('logsfr values set to -3 floor! no modifications can be created. exiting.')
+        return
+    
+    #isolate galaxies with logSFR < -3, and galaxies with logSFR >= -3
+    lowsfr_galaxies = fc_galaxies[sfr < -3]
+    highsfr_galaxies = fc_galaxies[sfr >= -3]
+    
+    #create the subpopulations of open shapes, closed shapes, all shapes.
+    N_passive_closed = np.sum(highsfr_galaxies['passive_pop'])
+    N_passive_open = np.sum(lowsfr_galaxies['passive_pop'])
+    N_passive_all = N_passive_open + N_passive_closed
+    
+    N_suppressed_closed = np.sum(highsfr_galaxies['suppressed_pop'])
+    N_suppressed_open = np.sum(lowsfr_galaxies['suppressed_pop'])
+    N_suppressed_all = N_suppressed_open + N_suppressed_closed
+    
+    #and of course, the total number of galaxies in the FC
+    N_all = len(fc_galaxies)
+    
+    #if moving all open suppressed galaxies to passive
+    if sup_to_pas:
+        mod_suppressed = (N_suppressed_closed) / N_all
+        mod_passive = (N_passive_all + N_suppressed_open) / N_all
+    
+    if pas_to_sup:
+        mod_suppressed = (N_suppressed_all + N_passive_open) / N_all
+        mod_passive = (N_passive_closed) / N_all
+    
+    return mod_suppressed, mod_passive
+    

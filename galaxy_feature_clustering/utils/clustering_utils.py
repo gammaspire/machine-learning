@@ -23,7 +23,7 @@ def pca_2d(feature_data, features, plot=False):
     feature_data = feature_data.copy()   #needed, again, to suppress some pandas Copy warning
     
     pca = PCA(n_components=2)
-    X_pca = pca.fit_transform(feature_data[features])   #ignores Feature Cluster column!
+    X_pca = pca.fit_transform(feature_data[features])   #ignores Feature Class column!
     feature_data[['Comp1', 'Comp2']] = X_pca
     
     #PLOT THE COMPONENTS
@@ -79,7 +79,7 @@ def umap_2d(feature_data, features):
     
 def run1_kmeans(feature_data, features, k=3, n_init=10, random_state=42):
     '''
-    Perform k-means clustering, output updated df with Feature Cluster column corresponding
+    Perform k-means clustering, output updated df with Feature Class column corresponding
         to which cluster each galaxy row belongs.
     '''
     
@@ -88,7 +88,7 @@ def run1_kmeans(feature_data, features, k=3, n_init=10, random_state=42):
     kmeans = KMeans(n_clusters=k, random_state=42, n_init=n_init)
     
     #this silly bracket addition is needed when making a new df col and not editing an existing one..?
-    feature_data.loc[:, 'Feature Cluster'] = kmeans.fit_predict(feature_data[features])
+    feature_data.loc[:, 'Feature Class'] = kmeans.fit_predict(feature_data[features])
     
     return feature_data
 
@@ -102,7 +102,7 @@ def find_optimal_k(feature_data, features, min_k=2, max_k=10, plot=True):
     
     for k in K:
         faux_df = run1_kmeans(feature_data, features, k)
-        silhouettes.append(silhouette_score(faux_df[features], faux_df['Feature Cluster']))
+        silhouettes.append(silhouette_score(faux_df[features], faux_df['Feature Class']))
     
     if plot:
         from plotting_utils import plot_silhouette
@@ -120,7 +120,7 @@ def run1_hdbscan(feature_data, features, min_cluster_size=20, min_samples=10,
                  metric='canberra', cluster_selection_method='leaf'):
     """
     Perform HDBSCAN clustering on the feature data.
-    Adds a new 'Feature Cluster' column containing cluster labels.
+    Adds a new 'Feature Class' column containing cluster labels.
     Noise points have label -1.
     """
     feature_data = feature_data.copy()
@@ -137,7 +137,7 @@ def run1_hdbscan(feature_data, features, min_cluster_size=20, min_samples=10,
                      cluster_selection_method=cluster_selection_method, core_dist_n_jobs=1)
         labels = hdbscan.fit_predict(X)
     
-    feature_data.loc[:, 'Feature Cluster'] = labels
+    feature_data.loc[:, 'Feature Class'] = labels
 
     return feature_data
 

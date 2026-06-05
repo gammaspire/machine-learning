@@ -141,4 +141,16 @@ def make_env_defs(feature_data, main_only=True):
                'Pure Field':                 (feature_data['pure_field'])}
 
     return env_defs
+
+
+############################
+# DICTIONARY FOR FC LABELS #
+############################
+
+def make_fc_defs():
     
+    fc_dict = {0: 'Dwarf Galaxies',
+               1: 'Spheroids',
+               2: 'Extended Disks'}
+    
+    return fc_dict

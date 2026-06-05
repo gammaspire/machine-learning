@@ -49,7 +49,7 @@ def get_vcosmic_column():
 #pull Hubble t-type from Hyperleda catalog (which I then saved to virgowise_data.fits)
 def get_ttype_column():
     hyp = Table.read('data/virgowise_data.fits')
-    return hyp['t_type']
+    return hyp['t_type'], hyp['t_type_err']
 
 def get_AGN_columns():
     tab = Table.read('data/virgowise_data.fits')
@@ -82,7 +82,7 @@ def get_stellar_columns():
     delta_sfr = get_delta_logsfr(mstar, sfr, m, b)
     
     #collapse log(SFR)<-3 to -3
-    sfr[sfr<-3] = -3
+    #sfr[sfr<-3] = -3
     
     return mstar, sfr, delta_sfr
 
@@ -125,7 +125,7 @@ def get_dsfr_stdev(df):
     return np.std(dsfr, ddof=1)
     
     
-def dsfr_columns(df, n_pop, ms_multiple=1.5, passive_multiple=3.):
+def dsfr_columns(df, n_pop, one_sigma=None, ms_multiple=1.5, passive_multiple=3.):
     '''
     Aim: Create bool columns to isolate the dSFR populations.
     * df --> dataframe of galaxies with dSFR column
@@ -141,8 +141,9 @@ def dsfr_columns(df, n_pop, ms_multiple=1.5, passive_multiple=3.):
     Output: row-matched boolean flags for each population type!
     '''
     
-    #calculate the 1-sigma variation about the MS line
-    one_sigma = get_dsfr_stdev(df)
+    #calculate the 1-sigma variation about the MS line, assuming the user did not input one
+    if one_sigma is None:
+        one_sigma = get_dsfr_stdev(df)
     
     if 'delta_logsfr' not in df.columns:
         print('Cannot add dSFR bool columns! Need "delta_logsfr" column to continue.')
@@ -218,7 +219,7 @@ def make_galfit_table(params):
     num = data_table['CRE_W3-fixBA']  #numerator...
     den = data_table['CRE_W1-fixBA']  #denominator...
 
-    data_table['Size Ratio'] = np.where(num != 0., num / den, np.nan)   #for cells where numerator is not 0 (indicates failure),
+    data_table['Size Ratio'] = np.where(num != 0., num / den, np.nan)   #for cells where numerator is not 0,
                                                                        #put in size ratio; otherwise, put np.nan
     
     #add NUV-r, W1-W3 colors
@@ -230,7 +231,7 @@ def make_galfit_table(params):
     data_table.add_columns([phot['RA_MOMENT'], phot['DEC_MOMENT']], names=['RA','DEC'])
     
     #add Hubble t-type column
-    data_table['t_type'] = get_ttype_column()
+    data_table['t_type'], data_table['t_type_err'] = get_ttype_column()
         
     #add AGN columns
     data_table['WISE_AGN'], data_table['kauffman_AGN'] = get_AGN_columns()
@@ -453,18 +454,18 @@ def k_reassignment(feature_data):
     '''
     
     #define the clusters, TYPICALLY (0,1,2)
-    clusters = sorted(feature_data['Feature Cluster'].unique())
+    clusters = sorted(feature_data['Feature Class'].unique())
     
     #only run if k=3 AND k-means clustering has already run
-    if (len(clusters) not in [3,4]) or ('Feature Cluster' not in feature_data.columns):
+    if (len(clusters) not in [3,4]) or ('Feature Class' not in feature_data.columns):
         return feature_data
     
     #create clean copy of feature_data dataframe:
     df = feature_data.copy()
         
     #calculate per-cluster medians
-    #groups df by Feature Cluster, calculates median of FG0, FG1, FG2 size ratio and cre_g
-    stats = (df.groupby('Feature Cluster')[['Size Ratio', 'CRE_g']].median())
+    #groups df by Feature Class, calculates median of FG0, FG1, FG2 size ratio and cre_g
+    stats = (df.groupby('Feature Class')[['Size Ratio', 'CRE_g']].median())
     
     #identify the index where the minimum size ratio exists -- this is the "old" k-value for what will be FG1
     fg1_old = stats['Size Ratio'].idxmin()
@@ -489,19 +490,19 @@ def k_reassignment(feature_data):
         mapping = {fg0_old: 0, fg1_old: 1, fg2_old: 2, fg3_old: 3}
 
     #add the mapping dictionary to df...
-    df['Feature Cluster'] = df['Feature Cluster'].map(mapping)
+    df['Feature Class'] = df['Feature Class'].map(mapping)
 
     #and lastly, return the df.
     return df
 
 
 #############################################################
-# CREATE TABLE SUMMARY OF MEDIAN FEATURE CLUSTER PROPERTIES #
+# CREATE TABLE SUMMARY OF MEDIAN Feature Class PROPERTIES #
 #############################################################
 
 def create_median_table(feature_data, features):
     '''
-    AIM: save a summary of the feature medians + bootstrap uncertainties in every feature cluster
+    AIM: save a summary of the feature medians + bootstrap uncertainties in every Feature Class
     '''
     from data_utils import get_bootstrap_confint
     
@@ -512,12 +513,12 @@ def create_median_table(feature_data, features):
     summary_rows = []
     
     #for every cluster_id (e.g., k=0), isolate the rows which belong to that cluster_id
-    for cluster_id, df_cluster_all in feature_data.groupby("Feature Cluster"):
+    for cluster_id, df_cluster_all in feature_data.groupby("Feature Class"):
 
         df_cluster = df_cluster_all.copy()  #avoids rewriting the table...
         
         #create a dictionary. will be adding medians and such in the loop below.
-        row = {"Feature Cluster": cluster_id}
+        row = {"Feature Class": cluster_id}
 
         #now, for every (unscaled) feature...
         for feature in features_unscaled:
@@ -538,7 +539,7 @@ def create_median_table(feature_data, features):
             med = np.median(arr)
             low, high = get_bootstrap_confint(arr, nboot=5000)
 
-            #store median + error in the row set for that feature cluster
+            #store median + error in the row set for that Feature Class
             row[feature] = med
             row[feature+"_err_low"] = med - low
             row[feature+"_err_high"] = high - med

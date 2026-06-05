@@ -168,7 +168,7 @@ PCA_FOR_PLOTTING=False
 #will be ignored if PCA_FOR_PLOTTING=False
 PLOT_PCA_COMPONENTS=False
 
-#If PCA_FOR_PLOTTING is False, choose X and Y columns below for plotting feature clusters in 2D space
+#If PCA_FOR_PLOTTING is False, choose X and Y columns below for plotting Feature Classes in 2D space
 X='CN_W1-fixBA_unscaled'
 Y='CN_W3-fixBA_unscaled'
 
@@ -184,11 +184,11 @@ UMAP_FOR_PLOTTING=True
 ###   PLOTTING PARAMETERS -- GENERAL   ###
 ##########################################
 
-#set to True for the script to generate a 2D projection of the feature clusters!
+#set to True for the script to generate a 2D projection of the Feature Classes!
 #can dictate the axes with X and Y above, assuming PCA_FOR_PLOTTING=False
 PLOT_CLUSTERS=False
 
-#set to True for the script to generate a corner plot of all feature clusters in a 
+#set to True for the script to generate a corner plot of all Feature Classes in a 
 #physically meaningful space (i.e., feature vs. feature)
 PLOT_CORNER=False
 
@@ -232,12 +232,12 @@ PLOT_RAINCLOUDS=False
 #COMPANION TO PLOT_RAINCLOUDS
 FEATURE_LIST=None
 
-#set to True for script to plot the fraction of galaxies in one of five VFS environments from Castignani+2022 (pure field, filament, poor group, rich group, cluster). these fractions are split up into however many feature clusters the user defines.
-    #e.g., feature cluster 0 will be divided into five environments, feature cluster 1 will be divided into five environments, etc.
+#set to True for script to plot the fraction of galaxies in one of five VFS environments from Castignani+2022 (pure field, filament, poor group, rich group, cluster). these fractions are split up into however many Feature Classes the user defines.
+    #e.g., Feature Class 0 will be divided into five environments, Feature Class 1 will be divided into five environments, etc.
     #note that the environments, save for the pure field, are not entirely decoupled from one another. one galaxies could belong to multiple environments.
 PLOT_ENV_FRACTION=False
 
-#plot each feature cluster on an SFR vs. Mstar plot, with histogram sub-axes to show the scatter distribution
+#plot each Feature Class on an SFR vs. Mstar plot, with histogram sub-axes to show the scatter distribution
 PLOT_SFRMSTAR=False
 
 

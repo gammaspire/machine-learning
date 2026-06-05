@@ -135,13 +135,13 @@ def get_page_images(df_subset):
         
         #grab the optical and infrared image matrices from Legacy Survey Viewer
         img_optical = pull_ls_img(row.RA, row.DEC, layer='ls-dr9')
-        img_infrared = pull_ls_img(row.RA, row.DEC, layer='unwise-neo11')
+        #img_infrared = pull_ls_img(row.RA, row.DEC, layer='unwise-neo11')
         
         #concatenate into a 256 (rows) x 512 (columns) x 3 (RGB) matrix
-        comb = np.concatenate([img_optical, img_infrared], axis=1)
+        #comb = np.concatenate([img_optical, img_infrared], axis=1)
         
         #add to imgs dictionary!
-        imgs[vfid] = comb
+        imgs[vfid] = img_optical#comb
 
     return imgs
 
@@ -242,7 +242,7 @@ def create_figure(df_subset, ncol=4, nrow=4, page_dict=None):
                 #read the image data
                 img = mpimg.imread(impath)
             except:
-                print(f'{impath} not found. Make sure you have the JPG images saved to disk.')
+                print(f'{impath} not found. Make sure you have the JPG images saved to disk. Exiting.')
                 return
             
         #display the image on the panel
@@ -286,6 +286,7 @@ def create_figure(df_subset, ncol=4, nrow=4, page_dict=None):
         
         #if there is no page_dict, delete the saved jpg (no longer needed).
         if page_dict is None:
+            print(f'Deleting {impath}')
             remove_ls_jpg(vfid)
         
     #close figure to preserve space or something
@@ -307,7 +308,7 @@ def create_subset(df, k=0, pop=0):
         print('Both k and pop variables must be integers!')
         return
     
-    df_k = (df['Feature Cluster']==k)
+    df_k = (df['Feature Class']==k)
     df_pop = (df[POP_DICT[pop]])
     
     df_subset = df[df_k & df_pop]

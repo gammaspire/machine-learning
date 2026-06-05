@@ -1,6 +1,6 @@
 '''
 OBJECTIVE: 
-* apply HDBSCAN feature clustering (unsupervised machine learning) to VFS GALFIT output parameters for optical grz, unWISE W1-4.
+* apply HDBSCAN Feature Classing (unsupervised machine learning) to VFS GALFIT output parameters for optical grz, unWISE W1-4.
 
 NEED:
 * vf_v2_galfit_{band}.fits
@@ -18,7 +18,7 @@ SCAFFOLD PROCEDURE:
 * standardize all data using sklearn.StandardScaler
 * determine the optimal eps and min_sample value using silhouette score (optionally generate
     silhouette plot)
-    * quantitative metric of feature cluster quality
+    * quantitative metric of Feature Class quality
     * higher score --> more robust clustering
 * use optimal eps and min_sample parameters to generate "cluster membership array"
     * row-matched to input data; contains integer value for every galaxy indicating 
@@ -120,7 +120,7 @@ def run_hdbscan(colors=False,save_table=True):
     #for HDBSCAN, will need to remove [-1] noise galaxies when looking at physical properties. 
     #UMAP is an exception, since it relies on the full data distribution
     #NOISE != CLUSTER
-    clean_data = feature_data[feature_data['Feature Cluster'] != -1].copy()  
+    clean_data = feature_data[feature_data['Feature Class'] != -1].copy()  
         
     #create a separate pandas dataframe comprising the median, uncertainty summary
     #use clean data here
@@ -129,7 +129,7 @@ def run_hdbscan(colors=False,save_table=True):
         
     if save_table:        
         loc = os.path.join(os.getcwd(), 'data/hdbscan_median_features.csv')
-        print(f"\n A summary of feature cluster median properties saved to {loc}:")
+        print(f"\n A summary of Feature Class median properties saved to {loc}:")
         cluster_summary.to_csv(loc, index=False)
     
     #if params.PLOT_MEDIANS:
@@ -155,7 +155,7 @@ def run_hdbscan(colors=False,save_table=True):
     #otherwise will default to the X and Y columns defined in galfit_parameters.py
     if params.UMAP_FOR_PLOTTING:
 
-        #create the Comp1, Comp2 columns. IGNORES 'Feature Cluster' column (i.e., noise not a problem)
+        #create the Comp1, Comp2 columns. IGNORES 'Feature Class' column (i.e., noise not a problem)
         feature_data_umap = umap_2d(feature_data, features)
 
     #plort.
