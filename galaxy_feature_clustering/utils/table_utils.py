@@ -36,7 +36,6 @@ def read_phot_tables():
     #extinction corrections
     ext = Table.read('data/vf_v2_extinction.fits')['A(NUV)_SandF', 'A(R)_SandF',
                                                    'A(W1)_SandF', 'A(W3)_SandF']
-    
     return phot, ext
 
 
@@ -46,14 +45,19 @@ def get_vcosmic_column():
     return env['VFID'], env['Vcosmic']
 
 
-#pull Hubble t-type from Hyperleda catalog (which I then saved to virgowise_data.fits)
-def get_ttype_column():
-    hyp = Table.read('data/virgowise_data.fits')
-    return hyp['t_type'], hyp['t_type_err']
+#generic function to open the virgowise_data.fits file
+def open_virgowise_data():
+    return Table.read('data/virgowise_data.fits')
 
-def get_AGN_columns():
-    tab = Table.read('data/virgowise_data.fits')
-    return tab['WISE_AGN_flag'], tab['kauffman_AGN_flag']
+#pull Hubble t-type from Hyperleda catalog (which I then saved to virgowise_data.fits)
+def get_ttype_column(vf_data):
+    return vf_data['t_type'], vf_data['t_type_err']
+
+def get_AGN_columns(vf_data):
+    return vf_data['WISE_AGN_flag'], vf_data['kauffman_AGN_flag']
+
+def get_tempelgroup_column(vf_data):
+    return vf_data['Rank']
 
 
 def get_env_columns():
@@ -230,11 +234,11 @@ def make_galfit_table(params):
     #add RA, DEC columns
     data_table.add_columns([phot['RA_MOMENT'], phot['DEC_MOMENT']], names=['RA','DEC'])
     
-    #add Hubble t-type column
-    data_table['t_type'], data_table['t_type_err'] = get_ttype_column()
-        
-    #add AGN columns
-    data_table['WISE_AGN'], data_table['kauffman_AGN'] = get_AGN_columns()
+    #read virgowise_data table and pull T-Type, AGN flags, Tempel+2017 group rank
+    vf_data = open_virgowise_data()
+    data_table['Group_Rank'] = get_tempelgroup_column(vf_data)
+    data_table['t_type'], data_table['t_type_err'] = get_ttype_column(vf_data)
+    data_table['WISE_AGN'], data_table['kauffman_AGN'] = get_AGN_columns(vf_data)
     
     #add SNR columns!
     data_table['SNR_W1'] = calculate_SNR(phot['FLUX_AP06_W1'], phot['FLUX_IVAR_AP06_W1'])

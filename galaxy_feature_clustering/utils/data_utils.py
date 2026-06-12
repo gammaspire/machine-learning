@@ -253,4 +253,20 @@ def mod_pop_fractions(df, fc=0, sup_to_pas=False, pas_to_sup=False):
         mod_passive = (N_passive_closed) / N_all
     
     return mod_suppressed, mod_passive
+
+
+##########################################################
+# HELPER FUNCTION FOR plotting_utils.py/satcen_cum_env() #
+##########################################################
+def def_sat_cen(df_with_rank, env_flag):
+    '''
+    AIM: create central, satellite subsets using the Tempel+2017 group catalog rank labels.
+    '''
+    mask = df_with_rank['Group_Rank'].notna() 
+    central_flag = mask & (df_with_rank['Group_Rank'] == 1)
+    satellite_flag = mask & (df_with_rank['Group_Rank'] != 1)
     
+    centrals = df_with_rank[mask&central_flag&env_flag]
+    satellites = df_with_rank[mask&satellite_flag&env_flag]
+
+    return centrals, satellites

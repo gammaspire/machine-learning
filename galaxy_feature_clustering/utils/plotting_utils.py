@@ -91,10 +91,34 @@ def mod_logsfr(df, logsfr_floor=-3):
     
 # -- HELPER FUNCTION FOR PLOTTING THE (EMPIRICAL) CUMULATIVE DISTRIBUTION FUNCTION in plot_cum_env() -- #
 # (in other words, "HOW TO PLOT CUMULATIVE HISTOGRAMS WITHOUT THE MATPLOTLIB VERTICAL LINE")
-def plot_ecdf(data, **kwargs):
+def plot_ecdf(data, ax=None, **kwargs):
     x = np.sort(data)   #sort the x data from least to greatest
     y = np.arange(1, len(x)+1) / len(x)  #every y value from 0 to 1
-    plt.step(x, y, where='post', **kwargs)   #create the step function...
+    if ax is not None:
+        ax.step(x, y, where='post', **kwargs)   #create the step function...
+        return
+    plt.step(x, y, where='post', **kwargs)
+    
+
+# -- HELPER FUNCTION TO DEFINE THE COLUMN NAME AND PREFIX FOR dLOGSFR, W1 SERSIC INDEX, OR g-BAND SERSIC INDEX -- #
+# (for plot_cum_env(), plot_KDE_env(). bin_widths are for the latter.) 
+# no need for printed warning text bool args are incorrect; taken care of in the main functions.
+def get_colname_xlims(dsfr=False,w1ser=False,gser=False,binwidths=False):
+    if dsfr:
+        prefix='delta_logsfr'
+        xlims=(-5.5,1.5)
+        bin_widths = 0.3 if binwidths else None
+    elif w1ser:
+        prefix='CN_W1-fixBA_unscaled'
+        xlims=(0,6)
+        bin_widths = 0.3 if binwidths else None
+    elif gser:
+        prefix='CN_g_unscaled'
+        xlims=(0,6)
+        bin_widths = 0.3 if binwidths else None
+    else:
+        return None, None, None
+    return prefix, xlims, bin_widths 
 
 
 #####################################
@@ -1276,19 +1300,8 @@ def plot_KDE_env(feature_data, dsfr=True, w1ser=False, gser=False, main_only=Fal
     If >1 is set to True, default will be dsfr, then w1ser. 
     '''
 
-    if dsfr:
-        prefix='delta_logsfr'
-        xlims=(-6,2)
-        bin_width = 0.3
-    elif w1ser:
-        prefix='CN_W1'
-        xlims=(0,6)
-        bin_width = 0.2
-    elif gser:
-        prefix='CN_g'
-        xlims=(0,6)
-        bin_width = 0.2
-    else:
+    prefix, xlims, bin_width = get_colname_xlims(dsfr=dsfr,w1ser=w1ser,gser=gser,binwidths=True)
+    if prefix == None or xlims == None:
         print('Need to set dsfr, w1ser, or gser to True.')
         return
     
@@ -1400,17 +1413,8 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
     AIM: create a single figure of the cumulative histogram curves for a given Feature Class in each environment.
     * fc must be an integer
     '''
-    
-    if dsfr:
-        prefix='delta_logsfr'
-        xlims=(-5.5,1.5)
-    elif w1ser:
-        prefix='CN_W1-fixBA_unscaled'
-        xlims=(0,6)
-    elif gser:
-        prefix='CN_g_unscaled'
-        xlims=(0,6)
-    else:
+    prefix, xlims, _ = get_colname_xlims(dsfr=dsfr,w1ser=w1ser,gser=gser)
+    if prefix == None or xlims == None:
         print('Need to set dsfr, w1ser, or gser to True.')
         return
     
@@ -1436,7 +1440,7 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
         if i==0:
             color='goldenrod'
         
-        plot_ecdf(fc_galaxies[prefix][env_flag], linewidth=2,
+        plot_ecdf(fc_galaxies[prefix][env_flag], ax=None, linewidth=2,
                   label=env_name.replace('\n',' ').replace('   ',' '),
                   color=color)
             
@@ -1470,3 +1474,78 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
             print(f"ks stat ({env1_name} || {env2_name}): {ks_stat:.3f}")
             print(f"p-value ({env1_name} || {env2_name}): {p_value:.3e}")
             print('--------------------')
+            
+            
+def satcen_cum_env(df_with_rank, fc=0, dsfr=True, w1ser=False, gser=False, main_only=True):
+    '''
+    AIM: create a single figure of the cumulative histogram curves for a given Feature Cluster in each environment.
+    * fc must be an integer
+    '''
+    prefix, xlims, _ = get_colname_xlims(dsfr=dsfr,w1ser=w1ser,gser=gser)
+    if prefix == None or xlims == None:
+        print('Need to set dsfr, w1ser, or gser to True.')
+        return
+
+    if 'Group_Rank' not in df_with_rank.columns:
+        print('Need "Group_Rank" column from Tempel+2017 group catalog in order to continue. Exiting.')
+        return
+    
+    from data_utils import def_sat_cen
+    
+    #create colormap! ranges from 0 to 1. 
+    cmap = plt.colormaps.get_cmap('viridis_r')
+    
+    #only want the main environments
+    env_dict = make_env_defs(df_with_rank, main_only=main_only) 
+    
+    #remove Pure Field if it exists -- no satellite galaxies (in principle) in this environment
+    env_dict.pop('Pure Field', None)
+    
+    #initialize the figure
+    fig = plt.figure(figsize=(int(80/len(env_dict)), 5))
+    
+    gs = fig.add_gridspec(1,len(env_dict))
+    
+    axes = [fig.add_subplot(gs[0,n]) for n in range(len(env_dict))]
+    
+    #loop through every environment
+    for n, (env_name, env_flag) in enumerate(env_dict.items()):
+        
+        ax = axes[n]
+        
+        centrals, satellites = def_sat_cen(df_with_rank,env_flag)
+        
+        print(f"total # centrals and satellites: {np.sum(centrals['Feature Class']==fc)+np.sum(satellites['Feature Class']==fc)}")
+
+        for i, (name, dat) in enumerate({'Centrals':centrals,'Satellites':satellites}.items()):
+
+            if i==0:
+                color='goldenrod'
+            else:
+                color='teal'
+                
+            plot_ecdf(dat[prefix][dat['Feature Class']==fc], ax, linewidth=2,
+                      label=name,color=color)
+            
+            print(f'N galaxies in {name}[{env_name}]:',np.sum(dat['Feature Class']==fc))
+            
+        ax.text(0.97, 0.03,env_name,transform=ax.transAxes,ha='right',va='bottom',
+                fontsize=13)
+        
+        ax.set_xlabel(LABEL_DICT[prefix.replace('_unscaled','')],fontsize=14)
+        ax.set_ylabel('Fraction of Galaxies',fontsize=14)
+        ax.legend(fontsize=13)
+
+        ax.set_xlim(*xlims)
+    
+        ks_stat, p_value = ks_2samp(centrals[prefix][centrals['Feature Class']==fc],
+                                    satellites[prefix][satellites['Feature Class']==fc])
+        print()
+
+        title_dict = {0: 'Dwarfs', 1: 'Spheroids', 2: 'Large disks', 3:'Placeholder', 4:'Placeholder',
+                     5:'Placeholder'}
+        ax.set_title(f'FC{fc} ({title_dict[fc]}) | p = {p_value:.3e}', fontsize=15)
+    
+    plt.tight_layout()
+    plt.savefig(HOMEDIR+f'/Desktop/kmeans_figures/centralsatellite_fc{fc}.png',dpi=150)
+    plt.show()
