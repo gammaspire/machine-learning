@@ -339,25 +339,34 @@ def trim_galfit_table(full_df, params):
         
     #drop rows with any nser > 6.
     df_two = df_one.loc[~(df_one[nser_cols]>6).any(axis=1)]
-    print(f'ALERT! Removing {len(df_one) - len(df_two)} with GALFIT nser > 6 in one of the bands used for k-means clustering.')
+    print(f'ALERT! Removing {len(df_one) - len(df_two)} more galaxies with GALFIT nser > 6 in one of the bands used for k-means clustering.')
         
     #drop rows with any convolved numerical error
     df_three = df_two.loc[~(df_two[numerr_cols]).any(axis=1)]
-    print(f'ALERT! Removing {len(df_two) - len(df_three)} with a GALFIT numerical error.')
+    print(f'ALERT! Removing {len(df_two) - len(df_three)} more galaxies with a GALFIT numerical error.')
+    
+    #w1 diagnostics
+    print('#'*20)
+    print('W1 decomposition:')
+    print(f"# galaxies with no W1 model: {len(df_snrtrim) - len(df_snrtrim.loc[~(df_snrtrim['CXC_W1-fixBA']==0)])}")
+    print(f"# galaxies with W1 nser > 6: {len(df_one) - len(df_one.loc[~(df_one['CN_W1-fixBA']>6)])}")
+    print(f"# galaxies with W1 numerical err: {len(df_two) - len(df_two.loc[~(df_two['CNumerical_Error_W1-fixBA'])])}")
+    print('#'*20)
+    
     
     #apply the bright star flag (from JM's photometry catalog)
     bs_flag = df_three['NEARBYSTAR']
     df_bs = df_three.loc[~bs_flag]
-    print(f'ALERT! Removing {np.sum(bs_flag)} galaxies with a nearby bright star (SGA-2020 bitmask).')
+    print(f'ALERT! Removing {np.sum(bs_flag)} more galaxies with a nearby bright star (SGA-2020 bitmask).')
     
     #apply the logMstar, logSFR completeness limit flags. 
     #note: if either or both set to None in init_parameters.py, then this function will do nothing.
     df_four = completeness_limits(df_bs, params.LOGMSTAR_LIM, params.LOGSFR_LIM)
-    print(f'ALERT! Removing {len(df_bs) - len(df_four)} which do not pass any Mstar, SFR completeness limits specified in init_parameters.txt')
+    print(f'ALERT! Removing {len(df_bs) - len(df_four)} more galaxies which do not pass any Mstar, SFR completeness limits specified in init_parameters.txt')
     
     #apply inclination cut (remove galaxies with B/A < 0.25)
     df_five = df_four.loc[df_four['Axis Ratio']>=0.25]
-    print(f'ALERT! Removed {len(df_four) - len(df_five)} galaxies after applying the inclination cut.')
+    print(f'ALERT! Removed {len(df_four) - len(df_five)} more galaxies after applying the inclination cut.')
         
     #if magnitude colors are in the list of features, then we have to apply
     #a quality flag here too. This amount to just dropping the non-finite/unphysical/fake news values
@@ -372,11 +381,11 @@ def trim_galfit_table(full_df, params):
         exclude_outliers_flag = np.asarray([VFID.decode('utf-8') not in params.EXCLUDE_OUTLIERS for VFID in df_five['VFID']])
         exclude_flag = (exclude_stars_flag & exclude_outliers_flag)
         df_five = df_five[exclude_flag]
-        print(f'ALERT! Removed {np.sum(~exclude_stars_flag)} galaxies after excluding VFIDs with bright stars (from init_parameters.py).')
-        print(f'ALERT! Removed {np.sum(~exclude_outliers_flag)} galaxies after excluding outlier VFIDs (from init_parameters.py).')
+        print(f'ALERT! Removed {np.sum(~exclude_stars_flag)} more galaxies after excluding VFIDs with bright stars (from init_parameters.py).')
+        print(f'ALERT! Removed {np.sum(~exclude_outliers_flag)} more galaxies after excluding outlier VFIDs (from init_parameters.py).')
         print(f'Combined (accounting for duplicates), this totals to {np.sum(~exclude_flag)} galaxies (from init_parameters.py).')
         
-    message=f'Removed {ngal_before - len(df_five)}/{ngal_before}  galaxies in total. This leaves {len(df_five)} galaxies. Wow.'            
+    message=f'Removed {ngal_before - len(df_five)}/{ngal_before} galaxies in total. This leaves {len(df_five)} galaxies. Wow.'            
     print('#'*len(message))
     print(message)
     print('#'*len(message))
