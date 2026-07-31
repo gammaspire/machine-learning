@@ -83,7 +83,7 @@ def run_kmeans(colors=False, save_table=True):
         #add the 1-sigma variance about the main sequence line -- needed for dlog(SFR) populations!
         #must also be calculated for the full Virgo dataset (with the log(sSFR)>-11.5 flag included in the function)
         
-        message = f'HEY-HO! Main Sequence 1-sigma variance for the full Virgo population with [log(sSFR)>-11.5] is {get_dsfr_stdev(df_full):.3f}'
+        message = f'HEY-HO! Main Sequence 1-sigma variance for the full Virgo population with log(sSFR)>-11.5 is {get_dsfr_stdev(df_full):.3f}'
         
         print('#'*len(message))
         print(message)

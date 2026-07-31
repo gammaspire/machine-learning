@@ -15,6 +15,8 @@ from itertools import combinations
 #editing feature labels! global variable!
 LABEL_DICT = make_label_dictionary()
 FC_DICT = make_fc_defs()
+TITLE_DICT = {0: 'Dwarf Galaxies', 1: 'Spheroids', 2: 'Large disks', 3:'Placeholder', 4:'Placeholder',
+                 5:'Placeholder'}
 
 import os
 HOMEDIR=os.getenv("HOME")
@@ -32,7 +34,7 @@ plt.rc('ytick', labelsize=14)
 
 def marker_palette(feature_data):
     
-    shapes = ['<', 's', '^', '*', 'D', 'v', 'X', '<', 'h', '>']
+    shapes = ['o', 's', '^', '*', 'D', 'v', 'X', '<', 'h', '>']
         
     try:
         clusters = feature_data['Feature Class'].unique()
@@ -421,7 +423,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
             err_y_up[k_cluster].append(unc_up)
             
             #define label for legend, but only for the first point of each FG (to avoid redundancies)
-            label_ = None if i!=0 else f'FC{k_cluster} ({Ngal_feature_group})'
+            label_ = None if i!=0 else f'{TITLE_DICT[k_cluster]} ({Ngal_feature_group})'
             
             ax.scatter(index[i], fraction,  color=colors[k_cluster], label=label_, s=90, 
                        edgecolor=edgecolors[k_cluster], marker=marker_shapes[k_cluster], zorder=3)
@@ -813,7 +815,7 @@ def feature_rainclouds(feature_data, feature_list=None):
             plt.scatter(features, y, s=10, c=edge_map[i], alpha=0.2)
         
         ax.set_yticks([k+1 for k in k_clusters])
-        ax.set_yticklabels([f'FC{k}' for k in k_clusters], fontsize=15)
+        ax.set_yticklabels([TITLE_DICT[k] for k in k_clusters], fontsize=15)
         ax.set_xlabel(get_feature_label(feature_name, LABEL_DICT), fontsize=15)   #need the fancy schmancy name
         
         if feature_name=='Size Ratio':
@@ -1095,8 +1097,10 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     handles = []
     labels = []
     
+    y_label = r'log(SFR / M$_\odot$ yr$^{-1}$)'
+    
     if y=='delta_logsfr':
-        y_label = r'$\Delta$log(SFR)'
+        y_label = r'$\Delta$' + y_label
         
         if rectangle and type(MS_1SIGMA) is float:
             #   -- add population rectangles! --
@@ -1125,9 +1129,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
         else:
             print('Note: either the rectangle arg is set to False and/or MS_1SIGMA arg is not set to a float.')
         
-    else:
-        y_label='log(SFR)'
-        
+    else:        
         #add sfr, mstar, ssfr limits
         if sfr_lim is not None:
             h_sfr = g.ax_joint.axhline(y=sfr_lim, color='crimson', linestyle='--', alpha=0.9, 
@@ -1149,6 +1151,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
         labels.append('log(sSFR) > -11.5')
         
         #add MS line!
+        from data_utils import get_ms_line
         m, b = get_ms_line(feature_data[x_], feature_data['logsfr'])
         
         h_ms, = g.ax_joint.plot([xplot[0], xplot[-1]], [m*xplot[0]+b, m*xplot[-1]+b], color='k', 
@@ -1161,7 +1164,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
                                           labels=labels,
                                           loc='upper left')
 
-    g.ax_joint.set_xlabel('log(Mstar)',fontsize=14)
+    g.ax_joint.set_xlabel(r'log(Mstar / M$_\odot$)',fontsize=14)
     g.ax_joint.set_ylabel(y_label,fontsize=14)
     
     g.ax_joint.set_xlim(8,)
@@ -1184,10 +1187,10 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     
     g.fig.set_size_inches(12, 6)
     
-    g.fig.tight_layout()
+    #g.fig.tight_layout()
     figpath=HOMEDIR+f'/Desktop/kmeans_figures/sfr_mstar.png' if y=='logsfr' else HOMEDIR+f'/Desktop/kmeans_figures/dsfr_mstar.png'
     
-    g.fig.savefig(figpath,dpi=150)
+    g.fig.savefig(figpath,dpi=150,bbox_inches='tight')
     plt.show()
 
 
@@ -1447,10 +1450,8 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
     plt.xlabel(LABEL_DICT[prefix.replace('_unscaled','')],fontsize=14)
     plt.ylabel('Fraction of Galaxies',fontsize=14)
     plt.legend()
-    
-    title_dict = {0: 'Dwarf Galaxies', 1: 'Spheroids', 2: 'Large disks', 3:'Placeholder', 4:'Placeholder',
-                 5:'Placeholder'}
-    plt.title(f'FC{fc} ({title_dict[fc]})', fontsize=15)
+
+    plt.title(f'FC{fc} ({TITLE_DICT[fc]})', fontsize=15)
     
     plt.xlim(*xlims)
     
@@ -1542,9 +1543,7 @@ def satcen_cum_env(df_with_rank, fc=0, dsfr=True, w1ser=False, gser=False, main_
                                     satellites[prefix][satellites['Feature Class']==fc])
         print()
 
-        title_dict = {0: 'Dwarfs', 1: 'Spheroids', 2: 'Large disks', 3:'Placeholder', 4:'Placeholder',
-                     5:'Placeholder'}
-        ax.set_title(f'FC{fc} ({title_dict[fc]}) | p = {p_value:.3e}', fontsize=15)
+        ax.set_title(f'FC{fc} ({TITLE_DICT[fc]}) | p = {p_value:.3e}', fontsize=15)
     
     plt.tight_layout()
     plt.savefig(HOMEDIR+f'/Desktop/kmeans_figures/centralsatellite_fc{fc}.png',dpi=150)

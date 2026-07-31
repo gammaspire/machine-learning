@@ -409,7 +409,7 @@ def completeness_limits(trimmed_df, mstar_limit=None, sfr_limit=None):
     sfr_flag = np.ones(len(trimmed_df),dtype=bool)
     mstar_flag = np.ones(len(trimmed_df),dtype=bool)
     
-    #if the user actually put integers into the galfit_parameters.py file, CHANGE THE BOOLS
+    #if the user actually put floats into the galfit_parameters.py file, CHANGE THE BOOLS
     if sfr_limit is not None:
         sfr_flag = (trimmed_df['logsfr'] > sfr_limit)
     if mstar_limit is not None:
