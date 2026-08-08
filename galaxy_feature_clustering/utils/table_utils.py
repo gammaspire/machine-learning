@@ -66,7 +66,8 @@ def get_env_columns():
     *very basic setup -- no environment, save pure field, is entirely decoupled from the others.
     '''
     env = Table.read('data/vf_v2_environment.fits')['cluster_member', 'rich_group_memb',
-                                                    'poor_group_memb', 'filament_member', 'pure_field']
+                                                    'poor_group_memb', 'filament_member', 'pure_field',
+                                                    'n5th_2D', 'n5th']
     return env.to_pandas()
 
 

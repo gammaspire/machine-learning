@@ -422,6 +422,8 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
             err_y_low[k_cluster].append(unc_low)
             err_y_up[k_cluster].append(unc_up)
             
+            #TITLE_DICT=[r'T$\leq$0 Dwarf Galaxies',r'T$>$0 Dwarf Galaxies']
+            
             #define label for legend, but only for the first point of each FG (to avoid redundancies)
             label_ = None if i!=0 else f'{TITLE_DICT[k_cluster]} ({Ngal_feature_group})'
             
@@ -448,7 +450,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
     ax.tick_params(axis='both', which='major', labelsize=12)
     ax.grid(alpha=0.2)
     
-    ax.set_ylim(ylim1, ylim2)
+    ax.set_ylim(ylim1, 0.9)
     ax.set_ylabel('Fraction of Galaxies',fontsize=17)
     
     ax.legend(loc=legend_loc, fontsize=14)
@@ -814,6 +816,8 @@ def feature_rainclouds(feature_data, feature_list=None):
             #now...plot the scattered points.
             plt.scatter(features, y, s=10, c=edge_map[i], alpha=0.2)
         
+        #TITLE_DICT=[r'T$\leq$0 Dwarf Galaxies',r'T$>$0 Dwarf Galaxies']
+        
         ax.set_yticks([k+1 for k in k_clusters])
         ax.set_yticklabels([TITLE_DICT[k] for k in k_clusters], fontsize=15)
         ax.set_xlabel(get_feature_label(feature_name, LABEL_DICT), fontsize=15)   #need the fancy schmancy name
@@ -1170,6 +1174,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     g.ax_joint.set_xlim(8,)
     g.ax_joint.set_ylim(-7.1,1.3) if y=='logsfr' else g.ax_joint.set_ylim(-6.1,2)
     
+    '''
     # ---- KDE MARGINALS (the histogram distributions) ----
     for k, color in enumerate(palette):
         subset = feature_data[(feature_data["Feature Class"] == k)]
@@ -1179,6 +1184,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
 
         #right marginal (dlogsfr)
         sns.kdeplot(y=subset[y], ax=g.ax_marg_y, color=color, fill=True, alpha=0.3, linewidth=1.2)
+    '''
     
     # --- put back the Feature Class legend ---
     if legend_clusters is not None:
