@@ -15,15 +15,15 @@ from itertools import combinations
 #editing feature labels! global variable!
 LABEL_DICT = make_label_dictionary()
 FC_DICT = make_fc_defs()
-TITLE_DICT = {0: 'Dwarf Galaxies', 1: 'Spheroids', 2: 'Large disks', 3:'Placeholder', 4:'Placeholder',
+TITLE_DICT = {0: 'Dwarf \n Galaxies', 1: 'Spheroids', 2: 'Large \n Disks', 3:'Placeholder', 4:'Placeholder',
                  5:'Placeholder'}
 
 import os
 HOMEDIR=os.getenv("HOME")
 
 #lastly, lastly...globally set the fontsize of tickmark labels
-plt.rc('xtick', labelsize=14)
-plt.rc('ytick', labelsize=14)
+plt.rc('xtick', labelsize=18)
+plt.rc('ytick', labelsize=18)
 
 
 ######################################
@@ -446,8 +446,8 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
                         np.asarray(line_y[k_cluster])+np.asarray(err_y_up[k_cluster]), 
                         color=colors[k_cluster], alpha=0.2, zorder=0)
     
-    ax.set_xticks(index, env_names, rotation=45, fontsize=15)
-    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.set_xticks(index, env_names, rotation=45, fontsize=20)
+    ax.tick_params(axis='both', which='major', labelsize=18)
     ax.grid(alpha=0.2)
     
     ax.set_ylim(ylim1, 0.9)
@@ -654,7 +654,7 @@ def virgowise_median_plot(feature_data, plot_paper1=False):
         ins = ax.inset_axes([0.536,0.533,0.46,0.46])
         ins.scatter(index,central_pts,color=colors[k],s=20,zorder=2,edgecolors=edgecolors[k],marker=marker_shapes[k])
         ins.grid(alpha=0.2)
-        ins.tick_params(axis='y',which='major',labelsize=15)
+        ins.tick_params(axis='y',which='major',labelsize=18)
         ins.tick_params(axis='x',which='both',bottom=False,labelbottom=False)
 
         for n in range(5):
@@ -671,7 +671,7 @@ def virgowise_median_plot(feature_data, plot_paper1=False):
         ins.fill_between(xfield,ymax,ymin,color='crimson',alpha=0.1)
 
         ax.set_xticks(index, env_names, rotation=10, fontsize=20)
-        ax.tick_params(axis='both', which='major', labelsize=15)
+        ax.tick_params(axis='both', which='major', labelsize=18)
         ax.grid(alpha=0.2)
         ax.set_ylabel(r'R$_{12}$/R$_{3.4}$',fontsize=20)
         
@@ -819,8 +819,9 @@ def feature_rainclouds(feature_data, feature_list=None):
         #TITLE_DICT=[r'T$\leq$0 Dwarf Galaxies',r'T$>$0 Dwarf Galaxies']
         
         ax.set_yticks([k+1 for k in k_clusters])
-        ax.set_yticklabels([TITLE_DICT[k] for k in k_clusters], fontsize=15)
-        ax.set_xlabel(get_feature_label(feature_name, LABEL_DICT), fontsize=15)   #need the fancy schmancy name
+        #ax.set_yticklabels([TITLE_DICT[k] for k in k_clusters], fontsize=18)
+        ax.set_yticklabels(['FC0','FC1','FC2'],fontsize=18)
+        ax.set_xlabel(get_feature_label(feature_name, LABEL_DICT), fontsize=18)   #need the fancy schmancy name
         
         if feature_name=='Size Ratio':
             ax.set_xlim(0,3)
@@ -1024,7 +1025,7 @@ def plot_pop_frac(feature_data, n_pop=3, uncertainty_points=False):
 
         ax.set_xticks(index, pop_labels, rotation=10, fontsize=20)
     
-    ax.tick_params(axis='both', which='major', labelsize=15)
+    ax.tick_params(axis='both', which='major', labelsize=18)
     
     ax.set_ylabel('FC Subset / FC Total',fontsize=18)
         
@@ -1088,7 +1089,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     g.plot_joint(sns.scatterplot, data=feature_data[highsfr_flag], hue="Feature Class", 
                  palette=palette, style='Feature Class', markers=markers,
                  alpha=0.4, edgecolor="w", linewidth=0.3) #, legend=False)
-    
+        
     #OPTIONAL: include AGN markers
     #g.plot_joint(sns.scatterplot, data=feature_data[feature_data['WISE_AGN'] | feature_data['kauffman_AGN']], 
     #             color='red', style='Feature Class', markers=markers,
@@ -1097,7 +1098,7 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
     # --- preserve the existing cluster legend (created by seaborn) ---
     legend_clusters = g.ax_joint.legend_
     
-    # --- initialize the "handles" and "labels" lists that will be used for the plot legend
+    # --- initialize the "handles" and "labels" lists that will be used for the second SFR-Mstar plot legend
     handles = []
     labels = []
     
@@ -1166,15 +1167,16 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
         # --- create 2nd legend for the limit lines ---
         legend_limits = g.ax_joint.legend(handles=handles,
                                           labels=labels,
-                                          loc='upper left')
+                                          loc='upper left',
+                                          fontsize='large')
 
-    g.ax_joint.set_xlabel(r'log(Mstar / M$_\odot$)',fontsize=14)
-    g.ax_joint.set_ylabel(y_label,fontsize=14)
+    g.ax_joint.set_xlabel(r'log(Mstar / M$_\odot$)',fontsize=18)
+    g.ax_joint.set_ylabel(y_label,fontsize=18)
     
     g.ax_joint.set_xlim(8,)
     g.ax_joint.set_ylim(-7.1,1.3) if y=='logsfr' else g.ax_joint.set_ylim(-6.1,2)
     
-    '''
+    
     # ---- KDE MARGINALS (the histogram distributions) ----
     for k, color in enumerate(palette):
         subset = feature_data[(feature_data["Feature Class"] == k)]
@@ -1183,20 +1185,25 @@ def plot_sfrmstar(feature_data, mstar_lim=None, sfr_lim=None, y='delta_logsfr', 
         sns.kdeplot(x=subset[x_], ax=g.ax_marg_x, color=color, fill=True, alpha=0.3, linewidth=1.2)
 
         #right marginal (dlogsfr)
-        sns.kdeplot(y=subset[y], ax=g.ax_marg_y, color=color, fill=True, alpha=0.3, linewidth=1.2)
-    '''
+        #sns.kdeplot(y=subset[y], ax=g.ax_marg_y, color=color, fill=True, alpha=0.3, linewidth=1.2)
+    #remove y-axis auxilary axis. not needed. or wanted. we share that in common.
+    g.ax_marg_y.remove()
     
     # --- put back the Feature Class legend ---
     if legend_clusters is not None:
         g.ax_joint.add_artist(legend_clusters)
         g.ax_joint.set_title(None)
-    
+            
     g.fig.set_size_inches(12, 6)
     
-    #g.fig.tight_layout()
-    figpath=HOMEDIR+f'/Desktop/kmeans_figures/sfr_mstar.png' if y=='logsfr' else HOMEDIR+f'/Desktop/kmeans_figures/dsfr_mstar.png'
+    #"set property" of the legend...augment fontsize
+    plt.setp(legend_clusters.get_texts(), fontsize='large')
+    plt.setp(legend_clusters.get_title(), fontsize='large')
+
+    figpath=HOMEDIR+f'/Desktop/kmeans_figures/'
+    figname='sfr_mstar.png' if y=='logsfr' else 'dsfr_mstar.png'
     
-    g.fig.savefig(figpath,dpi=150,bbox_inches='tight')
+    g.fig.savefig(figpath+figname,dpi=150,bbox_inches='tight')
     plt.show()
 
 
@@ -1435,13 +1442,13 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
     
     #create dictionary of environment name : environment flag
     env_dict = make_env_defs(fc_galaxies, main_only=main_only)
-    
+
     #initialize the figure
     fig = plt.figure(figsize=(8,5))
     
     #loop through every environment
     for i, (env_name, env_flag) in enumerate(env_dict.items()):
-        
+                
         #cmap takes floats (cmap(float)). choose a color for the corresponding environment.
         #if there is only one environment, default to the middle of the cmap
         color = cmap(i / (len(env_dict) - 1)) if len(env_dict) > 1 else cmap(0.5)
