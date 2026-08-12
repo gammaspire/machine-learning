@@ -15,7 +15,7 @@ from itertools import combinations
 #editing feature labels! global variable!
 LABEL_DICT = make_label_dictionary()
 FC_DICT = make_fc_defs()
-TITLE_DICT = {0: 'Dwarf \n Galaxies', 1: 'Spheroids', 2: 'Large \n Disks', 3:'Placeholder', 4:'Placeholder',
+TITLE_DICT = {0: 'Dwarf Galaxies', 1: 'Spheroids', 2: 'Large Disks', 3:'Placeholder', 4:'Placeholder',
                  5:'Placeholder'}
 
 import os
@@ -446,14 +446,14 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
                         np.asarray(line_y[k_cluster])+np.asarray(err_y_up[k_cluster]), 
                         color=colors[k_cluster], alpha=0.2, zorder=0)
     
-    ax.set_xticks(index, env_names, rotation=45, fontsize=20)
-    ax.tick_params(axis='both', which='major', labelsize=18)
+    ax.set_xticks(index, env_names, rotation=45, fontsize=16)
+    ax.tick_params(axis='both', which='major', labelsize=16)
     ax.grid(alpha=0.2)
     
-    ax.set_ylim(ylim1, 0.9)
+    ax.set_ylim(ylim1, 0.87)
     ax.set_ylabel('Fraction of Galaxies',fontsize=17)
     
-    ax.legend(loc=legend_loc, fontsize=14)
+    ax.legend(loc=legend_loc, fontsize=13)
     
     plt.tight_layout()
     figpath = HOMEDIR+'/Desktop/kmeans_figures/clusterfraction.png' if envfrac else HOMEDIR+'/Desktop/kmeans_figures/envfraction.png'
@@ -1274,11 +1274,11 @@ def plot_dSFR_KDEs(feature_data):
         line.set_data(x[flag],y[flag])               #(i.e., only plot part of curve in this region of viability)
         
         ax.set_xlabel('')
-        ax.set_ylabel('# Galaxies',fontsize=14)
-        kde.legend(fontsize=12)
+        ax.set_ylabel('# Galaxies',fontsize=16)
+        kde.legend(fontsize=14)
         
     #note: this label will default to the bottommost x-axis...which is what I want.
-    ax.set_xlabel(r'$\Delta$logSFR',fontsize=14)
+    ax.set_xlabel(r'$\Delta$logSFR',fontsize=16)
 
     plt.tight_layout()
     plt.savefig(HOMEDIR+'/Desktop/kmeans_figures/kde_dsfr.png',dpi=150)
@@ -1492,13 +1492,15 @@ def plot_cum_env(feature_data, fc=0, dsfr=True, w1ser=False, gser=False, main_on
             
 def satcen_cum_env(df_with_rank, fc=0, dsfr=True, w1ser=False, gser=False, main_only=True):
     '''
-    AIM: create a single figure of the cumulative histogram curves for a given Feature Cluster in each environment.
+    AIM: create a set of figure panels of the cumulative histogram curves for a given Feature Cluster. 
+    * Each panel shows a given quantile of 5NN local density (from Castignani+2022)
     * fc must be an integer
     '''
     prefix, xlims, _ = get_colname_xlims(dsfr=dsfr,w1ser=w1ser,gser=gser)
     if prefix == None or xlims == None:
         print('Need to set dsfr, w1ser, or gser to True.')
         return
+    xlims = (-5.5,2.4)
 
     if 'Group_Rank' not in df_with_rank.columns:
         print('Need "Group_Rank" column from Tempel+2017 group catalog in order to continue. Exiting.')
@@ -1509,11 +1511,15 @@ def satcen_cum_env(df_with_rank, fc=0, dsfr=True, w1ser=False, gser=False, main_
     #create colormap! ranges from 0 to 1. 
     cmap = plt.colormaps.get_cmap('viridis_r')
     
-    #only want the main environments
-    env_dict = make_env_defs(df_with_rank, main_only=main_only) 
-    
-    #remove Pure Field if it exists -- no satellite galaxies (in principle) in this environment
-    env_dict.pop('Pure Field', None)
+    #create quantiles
+    n5th = df_with_rank['n5th']
+    flag1 = (n5th < n5th.quantile(0.25))
+    flag2 = (n5th > n5th.quantile(0.25)) & (n5th < n5th.quantile(0.50))
+    flag3 = (n5th > n5th.quantile(0.50)) & (n5th < n5th.quantile(0.75))
+    flag0 = (n5th > n5th.quantile(0.75))
+    env_flag = [flag1,flag2,flag3,flag0]
+    env_name = ['First Quantile', 'Second Quantile', 'Third Quantile', 'Fourth Quantile']
+    env_dict = {n:f for n, f in zip(env_name, env_flag)}
     
     #initialize the figure
     fig = plt.figure(figsize=(int(80/len(env_dict)), 5))
@@ -1522,7 +1528,7 @@ def satcen_cum_env(df_with_rank, fc=0, dsfr=True, w1ser=False, gser=False, main_
     
     axes = [fig.add_subplot(gs[0,n]) for n in range(len(env_dict))]
     
-    #loop through every environment
+    #loop through every quartile
     for n, (env_name, env_flag) in enumerate(env_dict.items()):
         
         ax = axes[n]
@@ -1537,27 +1543,40 @@ def satcen_cum_env(df_with_rank, fc=0, dsfr=True, w1ser=False, gser=False, main_
                 color='goldenrod'
             else:
                 color='teal'
-                
-            plot_ecdf(dat[prefix][dat['Feature Class']==fc], ax, linewidth=2,
+            
+            plot_ecdf(dat[prefix][dat['Feature Class']==fc], ax, linewidth=3,
                       label=name,color=color)
+            
+            if n==0:
+                least_dat = [centrals, satellites]
+            else:
+                least_dat_ = least_dat[i]
+                plot_ecdf(least_dat_[prefix][least_dat_['Feature Class']==fc], ax, linewidth=1,
+                      color=color,ls='--',alpha=0.8) #label='First Quartile '+name,
             
             print(f'N galaxies in {name}[{env_name}]:',np.sum(dat['Feature Class']==fc))
             
-        ax.text(0.97, 0.03,env_name,transform=ax.transAxes,ha='right',va='bottom',
-                fontsize=13)
+        ax.text(0.03, 0.9,env_name,transform=ax.transAxes,ha='left',va='bottom',
+                fontsize=17)
         
-        ax.set_xlabel(LABEL_DICT[prefix.replace('_unscaled','')],fontsize=14)
-        ax.set_ylabel('Fraction of Galaxies',fontsize=14)
-        ax.legend(fontsize=13)
-
+        ax.set_xlabel(LABEL_DICT[prefix.replace('_unscaled','')],fontsize=16)
         ax.set_xlim(*xlims)
+    
+        if n==0:
+            ax.set_ylabel('Fraction of Galaxies',fontsize=16)
+            ax.legend(fontsize=16, loc='lower right')
+        else:
+            ax.set_yticklabels([])
     
         ks_stat, p_value = ks_2samp(centrals[prefix][centrals['Feature Class']==fc],
                                     satellites[prefix][satellites['Feature Class']==fc])
         print()
-
-        ax.set_title(f'FC{fc} ({TITLE_DICT[fc]}) | p = {p_value:.3e}', fontsize=15)
+        print(f"Medians: Centrals [{np.median(centrals[prefix][centrals['Feature Class']==fc]):.3f}] Satellites [{np.median(satellites[prefix][satellites['Feature Class']==fc]):.3f}]")
+        print(f"Difference between medians: {np.median(centrals[prefix][centrals['Feature Class']==fc]) - np.median(satellites[prefix][satellites['Feature Class']==fc]):.3f}")
+        print()
+        
+        ax.set_title(f'FC{fc} ({TITLE_DICT[fc]}) | p = {p_value:.3f}', fontsize=17)
     
     plt.tight_layout()
-    plt.savefig(HOMEDIR+f'/Desktop/kmeans_figures/centralsatellite_fc{fc}.png',dpi=150)
+    plt.savefig(HOMEDIR+f'/Desktop/kmeans_figures/censat_5nn_fc{fc}.png',dpi=150)
     plt.show()
