@@ -15,8 +15,8 @@ from itertools import combinations
 #editing feature labels! global variable!
 LABEL_DICT = make_label_dictionary()
 FC_DICT = make_fc_defs()
-TITLE_DICT = {0: 'Dwarf Galaxies', 1: 'Spheroids', 2: 'Large Disks', 3:'Placeholder', 4:'Placeholder',
-                 5:'Placeholder'}
+TITLE_DICT = {0: 'FC0: Dwarf Galaxies', 1: 'FC1: Spheroids', 2: 'FC2: Large Disks', 3:'FC3: Placeholder', 
+              4:'FC4: Placeholder', 5:'FC5: Placeholder'}
 
 import os
 HOMEDIR=os.getenv("HOME")
@@ -392,7 +392,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
                 title_ = 'Feature Class Composition Within each Environment'
                 legend_loc = 'center left'
                 ylim1 = 0
-                ylim2 = 0.85
+                ylim2 = 0.83
             
             ########
             # BOTH #
@@ -450,7 +450,7 @@ def plot_env_fraction(feature_data, main_only=False, envfrac=False, envcomp=Fals
     ax.tick_params(axis='both', which='major', labelsize=16)
     ax.grid(alpha=0.2)
     
-    ax.set_ylim(ylim1, 0.87)
+    ax.set_ylim(ylim1, ylim2)
     ax.set_ylabel('Fraction of Galaxies',fontsize=17)
     
     ax.legend(loc=legend_loc, fontsize=13)
@@ -1518,7 +1518,7 @@ def satcen_cum_env(df_with_rank, fc=0, dsfr=True, w1ser=False, gser=False, main_
     flag3 = (n5th > n5th.quantile(0.50)) & (n5th < n5th.quantile(0.75))
     flag0 = (n5th > n5th.quantile(0.75))
     env_flag = [flag1,flag2,flag3,flag0]
-    env_name = ['First Quantile', 'Second Quantile', 'Third Quantile', 'Fourth Quantile']
+    env_name = ['First Quantile\n(Least Dense)', 'Second Quantile', 'Third Quantile', 'Fourth Quantile\n(Most Dense)']
     env_dict = {n:f for n, f in zip(env_name, env_flag)}
     
     #initialize the figure
@@ -1552,12 +1552,13 @@ def satcen_cum_env(df_with_rank, fc=0, dsfr=True, w1ser=False, gser=False, main_
             else:
                 least_dat_ = least_dat[i]
                 plot_ecdf(least_dat_[prefix][least_dat_['Feature Class']==fc], ax, linewidth=1,
-                      color=color,ls='--',alpha=0.8) #label='First Quartile '+name,
+                      color=color,ls='--',alpha=0.8)
             
             print(f'N galaxies in {name}[{env_name}]:',np.sum(dat['Feature Class']==fc))
             
-        ax.text(0.03, 0.9,env_name,transform=ax.transAxes,ha='left',va='bottom',
-                fontsize=17)
+        y_adj = 0.9 if n in [1,2] else 0.83
+        ax.text(0.03, y_adj,env_name,transform=ax.transAxes,ha='left',va='bottom',
+                fontsize=18)
         
         ax.set_xlabel(LABEL_DICT[prefix.replace('_unscaled','')],fontsize=16)
         ax.set_xlim(*xlims)
@@ -1575,7 +1576,7 @@ def satcen_cum_env(df_with_rank, fc=0, dsfr=True, w1ser=False, gser=False, main_
         print(f"Difference between medians: {np.median(centrals[prefix][centrals['Feature Class']==fc]) - np.median(satellites[prefix][satellites['Feature Class']==fc]):.3f}")
         print()
         
-        ax.set_title(f'FC{fc} ({TITLE_DICT[fc]}) | p = {p_value:.3f}', fontsize=17)
+        ax.set_title(f'{TITLE_DICT[fc]} | p = {p_value:.3f}', fontsize=18)
     
     plt.tight_layout()
     plt.savefig(HOMEDIR+f'/Desktop/kmeans_figures/censat_5nn_fc{fc}.png',dpi=150)
